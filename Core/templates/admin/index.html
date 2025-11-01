@@ -9,13 +9,13 @@
 {% block content %}
 {% admin_model_count app_list as model_count %}
 {% get_admin_log 6 as hero_admin_log for_user user %}
-<div class="sf-dashboard-shell">
-    <section class="sf-card sf-dashboard-hero">
-        <div class="sf-hero-grid">
+<div class="sf-dashboard">
+    <section class="sf-card sf-hero">
+        <div class="sf-hero-top">
             <div class="sf-hero-copy">
                 <p class="eyebrow">{% trans 'Panel principal' %}</p>
                 <h1>{% trans 'Administra con precisión en blanco y negro' %}</h1>
-                <p class="sf-hero-summary-text">{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
+                <p>{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
                 <div class="sf-hero-actions">
                     <a class="sf-cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
                     <a class="sf-cta" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
@@ -26,31 +26,23 @@
                 <span class="hero-session-user">{% blocktrans with username=user.get_short_name|default:user.get_username %}Conectado como {{ username }}{% endblocktrans %}</span>
             </div>
         </div>
+        <ul class="sf-hero-stats">
+            <li class="sf-hero-stat">
+                <span class="label">{% trans 'Aplicaciones' %}</span>
+                <span class="value">{{ app_list|length }}</span>
+            </li>
+            <li class="sf-hero-stat">
+                <span class="label">{% trans 'Modelos gestionables' %}</span>
+                <span class="value">{{ model_count }}</span>
+            </li>
+            <li class="sf-hero-stat">
+                <span class="label">{% trans 'Acciones registradas' %}</span>
+                <span class="value">{{ hero_admin_log|length }}</span>
+            </li>
+        </ul>
     </section>
 
-    <section class="sf-dashboard-metrics" aria-labelledby="dashboard-metrics-title">
-        <h2 id="dashboard-metrics-title" class="sr-only">{% trans 'Resumen instantáneo' %}</h2>
-        <article class="sf-card sf-metric-card">
-            <dl>
-                <dt>{% trans 'Aplicaciones' %}</dt>
-                <dd>{{ app_list|length }}</dd>
-            </dl>
-        </article>
-        <article class="sf-card sf-metric-card">
-            <dl>
-                <dt>{% trans 'Modelos gestionables' %}</dt>
-                <dd>{{ model_count }}</dd>
-            </dl>
-        </article>
-        <article class="sf-card sf-metric-card">
-            <dl>
-                <dt>{% trans 'Acciones registradas' %}</dt>
-                <dd>{{ hero_admin_log|length }}</dd>
-            </dl>
-        </article>
-    </section>
-
-    <div class="sf-dashboard-main">
+    <div class="sf-dashboard-columns">
         <section class="sf-card sf-apps-card" id="dashboard-apps">
             <div class="sf-section-heading">
                 <h2>{% trans 'Aplicaciones y modelos' %}</h2>
