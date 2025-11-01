@@ -5,7 +5,7 @@ from itertools import chain
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import connection, transaction
 from django.db.models import Count, F, Q, Sum, Max
 from django.db.utils import OperationalError, ProgrammingError
@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
+from django.views import View
 
 from .forms import FarmacoForm, ProductoForm, VacunaRegistroForm
 from .models import (
@@ -234,163 +235,175 @@ def _excel_sections_response(filename, sections):
 # Sitio público
 # ----------------------------
 
-def landing(request):
-    productos_destacados = Producto.objects.none()
-    total_productos = 0
-    productos_disponibles = _producto_table_available()
+class LandingView(View):
+    template_name = "core/landing.html"
 
-    if productos_disponibles:
-        productos_destacados = Producto.objects.filter(disponible=True)[:6]
-        total_productos = Producto.objects.filter(disponible=True).count()
+    def get(self, request, *args, **kwargs):
+        productos_destacados = Producto.objects.none()
+        total_productos = 0
+        productos_disponibles = _producto_table_available()
 
-    citas_programadas = Cita.objects.filter(estado="programada").exclude(
-        fecha_hora__isnull=True
-    )
-    cita_proxima = (
-        citas_programadas.filter(fecha_hora__gte=timezone.now())
-        .order_by("fecha_hora")
-        .select_related("paciente", "veterinario", "paciente__propietario__user")
-        .first()
-    )
+        if productos_disponibles:
+            productos_destacados = Producto.objects.filter(disponible=True)[:6]
+            total_productos = Producto.objects.filter(disponible=True).count()
 
-    nombre_veterinario = ""
-    nombre_propietario = ""
-    if cita_proxima:
-        if cita_proxima.veterinario:
-            nombre_veterinario = (
-                cita_proxima.veterinario.get_full_name()
-                or cita_proxima.veterinario.username
+        citas_programadas = Cita.objects.filter(estado="programada").exclude(
+            fecha_hora__isnull=True
+        )
+        cita_proxima = (
+            citas_programadas.filter(fecha_hora__gte=timezone.now())
+            .order_by("fecha_hora")
+            .select_related(
+                "paciente", "veterinario", "paciente__propietario__user"
             )
-        propietario_user = cita_proxima.paciente.propietario.user
-        nombre_propietario = propietario_user.get_full_name() or propietario_user.username
-
-    context = {
-        "productos_destacados": productos_destacados,
-        "total_productos": total_productos,
-        "total_propietarios": Propietario.objects.count(),
-        "total_pacientes": Paciente.objects.count(),
-        "total_veterinarios": User.objects.filter(rol="VET").count(),
-        "total_citas_programadas": citas_programadas.count(),
-        "cita_proxima": cita_proxima,
-        "cita_proxima_veterinario": nombre_veterinario,
-        "cita_proxima_propietario": nombre_propietario,
-    }
-
-    return render(
-        request,
-        "core/landing.html",
-        context,
-    )
-
-
-def contacto(request):
-    """Página de contacto institucional de la veterinaria."""
-
-    sucursales = Sucursal.objects.all()
-    sucursal_principal = sucursales.first()
-
-    telefono_base = "+54 351 530-1903"
-    telefono_principal = telefono_base
-    direccion_principal = "Juan Perrin 6089, Córdoba, Argentina"
-    if sucursal_principal:
-        direccion_principal = sucursal_principal.direccion
-        if sucursal_principal.ciudad:
-            direccion_principal = f"{direccion_principal}, {sucursal_principal.ciudad}"
-        if sucursal_principal.telefono:
-            telefono_principal = sucursal_principal.telefono
-
-    telefono_normalizado = _solo_digitos_telefono(telefono_principal) or "543515301903"
-
-    sucursales_info = []
-    for sucursal in sucursales:
-        telefono_sucursal = sucursal.telefono or ""
-        telefono_sucursal_normalizado = _solo_digitos_telefono(telefono_sucursal)
-        sucursales_info.append(
-            {
-                "sucursal": sucursal,
-                "telefono_link": (
-                    f"tel:+{telefono_sucursal_normalizado}"
-                    if telefono_sucursal_normalizado
-                    else ""
-                ),
-                "whatsapp_url": (
-                    f"https://wa.me/{telefono_sucursal_normalizado}"
-                    if telefono_sucursal_normalizado
-                    else ""
-                ),
-            }
+            .first()
         )
 
-    context = {
-        "titulo_pagina": "Contacto",
-        "direccion": direccion_principal,
-        "telefono": telefono_principal,
-        "telefono_link": f"tel:+{telefono_normalizado}",
-        "email": "contacto@sabuesofeliz.com",
-        "horarios": {
-            "Lunes a Viernes": "08:00 a 20:00",
-            "Sábados": "09:00 a 14:00",
-        },
-        "whatsapp_url": f"https://wa.me/{telefono_normalizado}",
-        "sucursales_info": sucursales_info,
-    }
-
-    return render(request, "core/contacto.html", context)
-
-
-def tienda(request):
-    categoria = request.GET.get("categoria")
-    busqueda = request.GET.get("q", "").strip()
-
-    productos = Producto.objects.none()
-
-    productos_disponibles = _producto_table_available()
-
-    if productos_disponibles:
-        productos = Producto.objects.filter(disponible=True)
-        if categoria in dict(Producto.CATEGORIAS):
-            productos = productos.filter(categoria=categoria)
-        if busqueda:
-            productos = productos.filter(
-                Q(nombre__icontains=busqueda) | Q(descripcion__icontains=busqueda)
+        nombre_veterinario = ""
+        nombre_propietario = ""
+        if cita_proxima:
+            if cita_proxima.veterinario:
+                nombre_veterinario = (
+                    cita_proxima.veterinario.get_full_name()
+                    or cita_proxima.veterinario.username
+                )
+            propietario_user = cita_proxima.paciente.propietario.user
+            nombre_propietario = (
+                propietario_user.get_full_name() or propietario_user.username
             )
 
-        productos = productos.order_by("nombre")
+        context = {
+            "productos_destacados": productos_destacados,
+            "total_productos": total_productos,
+            "total_propietarios": Propietario.objects.count(),
+            "total_pacientes": Paciente.objects.count(),
+            "total_veterinarios": User.objects.filter(rol="VET").count(),
+            "total_citas_programadas": citas_programadas.count(),
+            "cita_proxima": cita_proxima,
+            "cita_proxima_veterinario": nombre_veterinario,
+            "cita_proxima_propietario": nombre_propietario,
+        }
 
-    return render(
-        request,
-        "core/tienda.html",
-        {
+        return render(request, self.template_name, context)
+
+
+class ContactoView(View):
+    template_name = "core/contacto.html"
+
+    def get(self, request, *args, **kwargs):
+        """Página de contacto institucional de la veterinaria."""
+
+        sucursales = Sucursal.objects.all()
+        sucursal_principal = sucursales.first()
+
+        telefono_base = "+54 351 530-1903"
+        telefono_principal = telefono_base
+        direccion_principal = "Juan Perrin 6089, Córdoba, Argentina"
+        if sucursal_principal:
+            direccion_principal = sucursal_principal.direccion
+            if sucursal_principal.ciudad:
+                direccion_principal = (
+                    f"{direccion_principal}, {sucursal_principal.ciudad}"
+                )
+            if sucursal_principal.telefono:
+                telefono_principal = sucursal_principal.telefono
+
+        telefono_normalizado = (
+            _solo_digitos_telefono(telefono_principal) or "543515301903"
+        )
+
+        sucursales_info = []
+        for sucursal in sucursales:
+            telefono_sucursal = sucursal.telefono or ""
+            telefono_sucursal_normalizado = _solo_digitos_telefono(telefono_sucursal)
+            sucursales_info.append(
+                {
+                    "sucursal": sucursal,
+                    "telefono_link": (
+                        f"tel:+{telefono_sucursal_normalizado}"
+                        if telefono_sucursal_normalizado
+                        else ""
+                    ),
+                    "whatsapp_url": (
+                        f"https://wa.me/{telefono_sucursal_normalizado}"
+                        if telefono_sucursal_normalizado
+                        else ""
+                    ),
+                }
+            )
+
+        context = {
+            "titulo_pagina": "Contacto",
+            "direccion": direccion_principal,
+            "telefono": telefono_principal,
+            "telefono_link": f"tel:+{telefono_normalizado}",
+            "email": "contacto@sabuesofeliz.com",
+            "horarios": {
+                "Lunes a Viernes": "08:00 a 20:00",
+                "Sábados": "09:00 a 14:00",
+            },
+            "whatsapp_url": f"https://wa.me/{telefono_normalizado}",
+            "sucursales_info": sucursales_info,
+        }
+
+        return render(request, self.template_name, context)
+
+
+class TiendaView(View):
+    template_name = "core/tienda.html"
+
+    def get(self, request, *args, **kwargs):
+        categoria = request.GET.get("categoria")
+        busqueda = request.GET.get("q", "").strip()
+
+        productos = Producto.objects.none()
+
+        productos_disponibles = _producto_table_available()
+
+        if productos_disponibles:
+            productos = Producto.objects.filter(disponible=True)
+            if categoria in dict(Producto.CATEGORIAS):
+                productos = productos.filter(categoria=categoria)
+            if busqueda:
+                productos = productos.filter(
+                    Q(nombre__icontains=busqueda)
+                    | Q(descripcion__icontains=busqueda)
+                )
+
+            productos = productos.order_by("nombre")
+
+        context = {
             "productos": productos,
             "categoria_activa": categoria,
             "busqueda": busqueda,
             "categorias": Producto.CATEGORIAS,
-        },
-    )
+        }
+
+        return render(request, self.template_name, context)
 
 
-def detalle_producto(request, producto_id):
-    if not _producto_table_available():
-        messages.error(
-            request,
-            "La tienda aún no está configurada. Ejecuta las migraciones pendientes para administrar productos.",
+class DetalleProductoView(View):
+    template_name = "core/detalle_producto.html"
+
+    def get(self, request, producto_id, *args, **kwargs):
+        if not _producto_table_available():
+            messages.error(
+                request,
+                "La tienda aún no está configurada. Ejecuta las migraciones pendientes para administrar productos.",
+            )
+            return redirect("landing")
+
+        queryset = Producto.objects.filter(disponible=True)
+        if request.user.is_authenticated and request.user.rol == "ADMIN":
+            queryset = Producto.objects.all()
+        producto = get_object_or_404(queryset, id=producto_id)
+        relacionados = (
+            Producto.objects.filter(disponible=True, categoria=producto.categoria)
+            .exclude(id=producto.id)
+            .order_by("-actualizado")[:4]
         )
-        return redirect("landing")
-
-    queryset = Producto.objects.filter(disponible=True)
-    if request.user.is_authenticated and request.user.rol == "ADMIN":
-        queryset = Producto.objects.all()
-    producto = get_object_or_404(queryset, id=producto_id)
-    relacionados = (
-        Producto.objects.filter(disponible=True, categoria=producto.categoria)
-        .exclude(id=producto.id)
-        .order_by("-actualizado")[:4]
-    )
-    return render(
-        request,
-        "core/detalle_producto.html",
-        {"producto": producto, "relacionados": relacionados},
-    )
+        context = {"producto": producto, "relacionados": relacionados}
+        return render(request, self.template_name, context)
 
 
 # ----------------------------
@@ -398,469 +411,483 @@ def detalle_producto(request, producto_id):
 # ----------------------------
 
 
-@login_required
-def dashboard(request):
-    user = request.user
-    context = {}
+class DashboardView(LoginRequiredMixin, View):
+    template_name = "core/dashboard.html"
 
-    if user.rol == "ADMIN":
-        if not user.is_superuser and not getattr(user, "sucursal_id", None):
-            messages.warning(
-                request,
-                "Asigna una sucursal a tu perfil para comenzar a gestionar la operación.",
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        context = {}
+
+        if user.rol == "ADMIN":
+            if not user.is_superuser and not getattr(user, "sucursal_id", None):
+                messages.warning(
+                    request,
+                    "Asigna una sucursal a tu perfil para comenzar a gestionar la operación.",
+                )
+
+            usuarios_qs = _filtrar_por_sucursal(User.objects.all(), user)
+            pacientes_qs = Paciente.objects.all()
+            if not user.is_superuser:
+                pacientes_qs = pacientes_qs.filter(
+                    cita__sucursal_id=user.sucursal_id
+                ).distinct()
+            citas_qs = _filtrar_por_sucursal(Cita.objects.all(), user)
+            historiales_qs = HistorialMedico.objects.all()
+            if not user.is_superuser:
+                historiales_qs = historiales_qs.filter(
+                    paciente__cita__sucursal_id=user.sucursal_id
+                ).distinct()
+
+            context["total_usuarios"] = usuarios_qs.count()
+            context["total_pacientes"] = pacientes_qs.count()
+            context["total_citas"] = citas_qs.count()
+            context["total_historiales"] = historiales_qs.count()
+            productos_disponibles = _producto_table_available()
+            context["total_productos"] = (
+                Producto.objects.count() if productos_disponibles else 0
+            )
+            resumen = {estado: 0 for estado, _ in Cita.ESTADOS}
+            for item in citas_qs.values("estado").annotate(total=Count("id")):
+                resumen[item["estado"]] = item["total"]
+            context["resumen_citas"] = resumen
+            context["todas_citas"] = (
+                citas_qs.select_related(
+                    "paciente",
+                    "paciente__propietario__user",
+                    "veterinario",
+                    "historial_medico",
+                )
+                .order_by("-fecha_solicitada", "-fecha_hora")[:20]
+            )
+            context["todos_pacientes"] = (
+                pacientes_qs.select_related("propietario__user").order_by("nombre")[:20]
+            )
+            context["productos_recientes"] = (
+                Producto.objects.order_by("-actualizado")[:6]
+                if productos_disponibles
+                else Producto.objects.none()
+            )
+        elif user.rol == "VET":
+            mi_sucursal = getattr(user, "sucursal", None)
+            if mi_sucursal is None:
+                messages.warning(
+                    request,
+                    "Tu perfil aún no tiene una sucursal asignada. Comunícate con un administrador para actualizar tus datos.",
+                )
+            context["mis_citas"] = (
+                Cita.objects.filter(veterinario=user)
+                .select_related(
+                    "paciente", "paciente__propietario__user", "historial_medico"
+                )
+                .order_by("-fecha_hora", "-fecha_solicitada")
+            )
+            context["mis_historiales"] = HistorialMedico.objects.filter(
+                veterinario=user
+            ).order_by("-fecha")
+            context["mi_sucursal"] = mi_sucursal
+            if mi_sucursal is not None:
+                inventario = _inventario_por_sucursal(mi_sucursal)
+                context["inventario_veterinario"] = inventario["resumen"]
+            else:
+                context["inventario_veterinario"] = None
+        elif user.rol == "OWNER":
+            productos_disponibles = _producto_table_available()
+            propietario = (
+                Propietario.objects.select_related("user")
+                .filter(user=user)
+                .first()
             )
 
-        usuarios_qs = _filtrar_por_sucursal(User.objects.all(), user)
-        pacientes_qs = Paciente.objects.all()
-        if not user.is_superuser:
-            pacientes_qs = pacientes_qs.filter(
-                cita__sucursal_id=user.sucursal_id
+            if propietario is None:
+                messages.warning(
+                    request,
+                    "Tu perfil de propietario aún no está completo. Solicita al equipo administrativo que registre tus datos para acceder a todas las funciones.",
+                )
+                context.update(
+                    {
+                        "propietario_incompleto": True,
+                        "mis_mascotas": [],
+                        "mis_citas": [],
+                        "mis_historiales": [],
+                        "proxima_cita": None,
+                        "citas_proximas": [],
+                        "citas_recientes": [],
+                        "citas_pendientes": [],
+                        "historiales_recientes": [],
+                        "estadisticas_propietario": {
+                            "mascotas": 0,
+                            "citas_activas": 0,
+                            "informes": 0,
+                            "profesionales": 0,
+                        },
+                    }
+                )
+            else:
+                mascotas = list(
+                    Paciente.objects.filter(propietario=propietario).order_by("nombre")
+                )
+                citas_queryset = (
+                    Cita.objects.filter(paciente__propietario=propietario)
+                    .select_related("paciente", "veterinario")
+                    .order_by("-fecha_solicitada", "-fecha_hora")
+                )
+                citas = list(citas_queryset)
+                historiales_queryset = (
+                    HistorialMedico.objects.filter(paciente__propietario=propietario)
+                    .select_related("paciente", "veterinario")
+                    .order_by("-fecha")
+                )
+                historiales = list(historiales_queryset)
+
+                ahora = timezone.now()
+                citas_confirmadas = [c for c in citas if c.fecha_hora]
+                citas_confirmadas.sort(key=lambda cita: cita.fecha_hora)
+                citas_proximas = [c for c in citas_confirmadas if c.fecha_hora >= ahora]
+                citas_pasadas = [
+                    c for c in citas_confirmadas if c.fecha_hora < ahora
+                ]
+                citas_pasadas.sort(key=lambda cita: cita.fecha_hora, reverse=True)
+                citas_pendientes = [c for c in citas if not c.fecha_hora]
+
+                context.update(
+                    {
+                        "mis_mascotas": mascotas,
+                        "mis_citas": citas,
+                        "mis_historiales": historiales,
+                        "proxima_cita": citas_proximas[0] if citas_proximas else None,
+                        "citas_proximas": citas_proximas[:5],
+                        "citas_recientes": citas_pasadas[:5],
+                        "citas_pendientes": citas_pendientes,
+                        "historiales_recientes": historiales[:5],
+                        "estadisticas_propietario": {
+                            "mascotas": len(mascotas),
+                            "citas_activas": len(citas_proximas)
+                            + len(citas_pendientes),
+                            "informes": len(historiales),
+                            "profesionales": len(
+                                {c.veterinario_id for c in citas if c.veterinario_id}
+                            ),
+                        },
+                    }
+                )
+
+            context["productos_sugeridos"] = (
+                Producto.objects.filter(disponible=True)
+                .order_by("-actualizado")[:3]
+                if productos_disponibles
+                else Producto.objects.none()
+            )
+        elif user.rol == "ADMIN_OP":
+            if not user.is_superuser and not getattr(user, "sucursal_id", None):
+                messages.warning(
+                    request,
+                    "Asigna una sucursal a tu perfil para comenzar a gestionar la operación.",
+                )
+
+            context["todas_citas"] = _filtrar_por_sucursal(
+                Cita.objects.select_related(
+                    "paciente",
+                    "paciente__propietario__user",
+                    "veterinario",
+                ).order_by("-fecha_solicitada", "-fecha_hora"),
+                user,
+            )
+            context["todos_pacientes"] = _filtrar_por_sucursal(
+                Paciente.objects.select_related("propietario__user").order_by("nombre"),
+                user,
+                field_name="cita__sucursal",
             ).distinct()
-        citas_qs = _filtrar_por_sucursal(Cita.objects.all(), user)
-        historiales_qs = HistorialMedico.objects.all()
-        if not user.is_superuser:
-            historiales_qs = historiales_qs.filter(
-                paciente__cita__sucursal_id=user.sucursal_id
-            ).distinct()
 
-        context["total_usuarios"] = usuarios_qs.count()
-        context["total_pacientes"] = pacientes_qs.count()
-        context["total_citas"] = citas_qs.count()
-        context["total_historiales"] = historiales_qs.count()
-        productos_disponibles = _producto_table_available()
-        context["total_productos"] = Producto.objects.count() if productos_disponibles else 0
-        resumen = {estado: 0 for estado, _ in Cita.ESTADOS}
-        for item in citas_qs.values("estado").annotate(total=Count("id")):
-            resumen[item["estado"]] = item["total"]
-        context["resumen_citas"] = resumen
-        context["todas_citas"] = (
-            citas_qs.select_related(
-                "paciente",
-                "paciente__propietario__user",
-                "veterinario",
-                "historial_medico",
-            )
-            .order_by("-fecha_solicitada", "-fecha_hora")[:20]
-        )
-        context["todos_pacientes"] = (
-            pacientes_qs.select_related("propietario__user").order_by("nombre")[:20]
-        )
-        context["productos_recientes"] = (
-            Producto.objects.order_by("-actualizado")[:6]
-            if productos_disponibles
-            else Producto.objects.none()
-        )
-    elif user.rol == "VET":
-        mi_sucursal = getattr(user, "sucursal", None)
-        if mi_sucursal is None:
-            messages.warning(
+        return render(request, self.template_name, context)
+
+
+class DashboardAdminAnalisisView(LoginRequiredMixin, View):
+    template_name = "core/dashboard_admin_analisis.html"
+
+    def get(self, request, *args, **kwargs):
+        usuario = request.user
+        if not (usuario.is_superuser or usuario.rol == "ADMIN"):
+            messages.error(
                 request,
-                "Tu perfil aún no tiene una sucursal asignada. Comunícate con un administrador para actualizar tus datos.",
+                "Acceso restringido. Solo los administradores pueden consultar el módulo de análisis.",
             )
-        context["mis_citas"] = (
-            Cita.objects.filter(veterinario=user)
-            .select_related(
-                "paciente", "paciente__propietario__user", "historial_medico"
-            )
-            .order_by("-fecha_hora", "-fecha_solicitada")
-        )
-        context["mis_historiales"] = HistorialMedico.objects.filter(
-            veterinario=user
-        ).order_by("-fecha")
-        context["mi_sucursal"] = mi_sucursal
-        if mi_sucursal is not None:
-            inventario = _inventario_por_sucursal(mi_sucursal)
-            context["inventario_veterinario"] = inventario["resumen"]
+            return redirect("dashboard")
+
+        sucursales_qs = _sucursales_para_usuario(usuario)
+        sucursales = list(sucursales_qs)
+        sucursal_param = request.GET.get("sucursal", "")
+        mostrar_opcion_todas = usuario.is_superuser and len(sucursales) > 1
+        sucursal_seleccionada = None
+
+        if usuario.is_superuser:
+            if sucursal_param and sucursal_param not in {"", "todas"}:
+                sucursal_seleccionada = next(
+                    (s for s in sucursales if str(s.id) == sucursal_param),
+                    None,
+                )
+                if sucursal_seleccionada is None:
+                    messages.error(request, "La sucursal seleccionada no es válida.")
+                    return redirect("dashboard_admin_analisis")
+            elif not sucursal_param:
+                if len(sucursales) == 1:
+                    sucursal_seleccionada = sucursales[0]
+                    sucursal_param = str(sucursal_seleccionada.id)
+                elif mostrar_opcion_todas:
+                    sucursal_param = "todas"
         else:
-            context["inventario_veterinario"] = None
-    elif user.rol == "OWNER":
-        productos_disponibles = _producto_table_available()
-        propietario = (
-            Propietario.objects.select_related("user")
-            .filter(user=user)
-            .first()
-        )
+            sucursal_seleccionada = getattr(usuario, "sucursal", None)
+            if sucursal_seleccionada is not None:
+                sucursal_param = str(sucursal_seleccionada.id)
 
-        if propietario is None:
-            messages.warning(
-                request,
-                "Tu perfil de propietario aún no está completo. Solicita al equipo administrativo que registre tus datos para acceder a todas las funciones.",
-            )
-            context.update(
-                {
-                    "propietario_incompleto": True,
-                    "mis_mascotas": [],
-                    "mis_citas": [],
-                    "mis_historiales": [],
-                    "proxima_cita": None,
-                    "citas_proximas": [],
-                    "citas_recientes": [],
-                    "citas_pendientes": [],
-                    "historiales_recientes": [],
-                    "estadisticas_propietario": {
-                        "mascotas": 0,
-                        "citas_activas": 0,
-                        "informes": 0,
-                        "profesionales": 0,
-                    },
-                }
-            )
-        else:
-            mascotas = list(
-                Paciente.objects.filter(propietario=propietario).order_by("nombre")
-            )
-            citas_queryset = (
-                Cita.objects.filter(paciente__propietario=propietario)
-                .select_related("paciente", "veterinario")
-                .order_by("-fecha_solicitada", "-fecha_hora")
-            )
-            citas = list(citas_queryset)
-            historiales_queryset = (
-                HistorialMedico.objects.filter(paciente__propietario=propietario)
-                .select_related("paciente", "veterinario")
-                .order_by("-fecha")
-            )
-            historiales = list(historiales_queryset)
-
-            ahora = timezone.now()
-            citas_confirmadas = [c for c in citas if c.fecha_hora]
-            citas_confirmadas.sort(key=lambda cita: cita.fecha_hora)
-            citas_proximas = [c for c in citas_confirmadas if c.fecha_hora >= ahora]
-            citas_pasadas = [c for c in citas_confirmadas if c.fecha_hora < ahora]
-            citas_pasadas.sort(key=lambda cita: cita.fecha_hora, reverse=True)
-            citas_pendientes = [c for c in citas if not c.fecha_hora]
-
-            context.update(
-                {
-                    "mis_mascotas": mascotas,
-                    "mis_citas": citas,
-                    "mis_historiales": historiales,
-                    "proxima_cita": citas_proximas[0] if citas_proximas else None,
-                    "citas_proximas": citas_proximas[:5],
-                    "citas_recientes": citas_pasadas[:5],
-                    "citas_pendientes": citas_pendientes,
-                    "historiales_recientes": historiales[:5],
-                    "estadisticas_propietario": {
-                        "mascotas": len(mascotas),
-                        "citas_activas": len(citas_proximas)
-                        + len(citas_pendientes),
-                        "informes": len(historiales),
-                        "profesionales": len(
-                            {c.veterinario_id for c in citas if c.veterinario_id}
-                        ),
-                    },
-                }
-            )
-
-        context["productos_sugeridos"] = (
-            Producto.objects.filter(disponible=True)
-            .order_by("-actualizado")[:3]
-            if productos_disponibles
-            else Producto.objects.none()
-        )
-    elif user.rol == "ADMIN_OP":
-        if not user.is_superuser and not getattr(user, "sucursal_id", None):
-            messages.warning(
-                request,
-                "Asigna una sucursal a tu perfil para comenzar a gestionar la operación.",
-            )
-
-        context["todas_citas"] = _filtrar_por_sucursal(
+        citas_base = _filtrar_por_sucursal(
             Cita.objects.select_related(
                 "paciente",
                 "paciente__propietario__user",
                 "veterinario",
-            ).order_by("-fecha_solicitada", "-fecha_hora"),
-            user,
+                "sucursal",
+            ).order_by("-fecha_hora", "-fecha_solicitada"),
+            usuario,
         )
-        context["todos_pacientes"] = _filtrar_por_sucursal(
-            Paciente.objects.select_related("propietario__user").order_by("nombre"),
-            user,
-            field_name="cita__sucursal",
-        ).distinct()
-
-    return render(request, "core/dashboard.html", context)
-
-
-@login_required
-def dashboard_admin_analisis(request):
-    usuario = request.user
-    if not (usuario.is_superuser or usuario.rol == "ADMIN"):
-        messages.error(
-            request,
-            "Acceso restringido. Solo los administradores pueden consultar el módulo de análisis.",
-        )
-        return redirect("dashboard")
-
-    sucursales_qs = _sucursales_para_usuario(usuario)
-    sucursales = list(sucursales_qs)
-    sucursal_param = request.GET.get("sucursal", "")
-    mostrar_opcion_todas = usuario.is_superuser and len(sucursales) > 1
-    sucursal_seleccionada = None
-
-    if usuario.is_superuser:
-        if sucursal_param and sucursal_param not in {"", "todas"}:
-            sucursal_seleccionada = next(
-                (s for s in sucursales if str(s.id) == sucursal_param),
-                None,
-            )
-            if sucursal_seleccionada is None:
-                messages.error(request, "La sucursal seleccionada no es válida.")
-                return redirect("dashboard_admin_analisis")
-        elif not sucursal_param:
-            if len(sucursales) == 1:
-                sucursal_seleccionada = sucursales[0]
-                sucursal_param = str(sucursal_seleccionada.id)
-            elif mostrar_opcion_todas:
-                sucursal_param = "todas"
-    else:
-        sucursal_seleccionada = getattr(usuario, "sucursal", None)
         if sucursal_seleccionada is not None:
-            sucursal_param = str(sucursal_seleccionada.id)
+            citas_base = citas_base.filter(sucursal=sucursal_seleccionada)
 
-    citas_base = _filtrar_por_sucursal(
-        Cita.objects.select_related(
-            "paciente",
-            "paciente__propietario__user",
-            "veterinario",
-            "sucursal",
-        ).order_by("-fecha_hora", "-fecha_solicitada"),
-        usuario,
-    )
-    if sucursal_seleccionada is not None:
-        citas_base = citas_base.filter(sucursal=sucursal_seleccionada)
+        farmacos_qs = _filtrar_por_sucursal(
+            Farmaco.objects.select_related("sucursal"),
+            usuario,
+        )
+        if sucursal_seleccionada is not None:
+            farmacos_qs = farmacos_qs.filter(sucursal=sucursal_seleccionada)
 
-    farmacos_qs = _filtrar_por_sucursal(
-        Farmaco.objects.select_related("sucursal"),
-        usuario,
-    )
-    if sucursal_seleccionada is not None:
-        farmacos_qs = farmacos_qs.filter(sucursal=sucursal_seleccionada)
+        farmacos_utilizados_qs = _filtrar_por_sucursal(
+            CitaFarmaco.objects.select_related(
+                "cita__paciente__propietario__user",
+                "cita__veterinario",
+                "cita__sucursal",
+                "farmaco",
+            ),
+            usuario,
+            field_name="cita__sucursal",
+        )
+        if sucursal_seleccionada is not None:
+            farmacos_utilizados_qs = farmacos_utilizados_qs.filter(
+                cita__sucursal=sucursal_seleccionada
+            )
 
-    farmacos_utilizados_qs = _filtrar_por_sucursal(
-        CitaFarmaco.objects.select_related(
-            "cita__paciente__propietario__user",
-            "cita__veterinario",
-            "cita__sucursal",
-            "farmaco",
-        ),
-        usuario,
-        field_name="cita__sucursal",
-    )
-    if sucursal_seleccionada is not None:
-        farmacos_utilizados_qs = farmacos_utilizados_qs.filter(
-            cita__sucursal=sucursal_seleccionada
+        periodos_inventario = {
+            "dia": {"label": "Últimas 24 horas", "dias": 1},
+            "semana": {"label": "Últimos 7 días", "dias": 7},
+            "mes": {"label": "Últimos 30 días", "dias": 30},
+        }
+        inventario_periodo = request.GET.get("inventario_periodo", "mes")
+        if inventario_periodo not in periodos_inventario:
+            inventario_periodo = "mes"
+        inventario_periodo_info = periodos_inventario[inventario_periodo]
+        inicio_periodo_inventario = timezone.now() - timedelta(
+            days=inventario_periodo_info["dias"]
         )
 
-    periodos_inventario = {
-        "dia": {"label": "Últimas 24 horas", "dias": 1},
-        "semana": {"label": "Últimos 7 días", "dias": 7},
-        "mes": {"label": "Últimos 30 días", "dias": 30},
-    }
-    inventario_periodo = request.GET.get("inventario_periodo", "mes")
-    if inventario_periodo not in periodos_inventario:
-        inventario_periodo = "mes"
-    inventario_periodo_info = periodos_inventario[inventario_periodo]
-    inicio_periodo_inventario = timezone.now() - timedelta(
-        days=inventario_periodo_info["dias"]
-    )
-
-    farmacos_periodo_qs = farmacos_utilizados_qs.filter(
-        registrado__gte=inicio_periodo_inventario
-    )
-
-    total_farmacos_utilizados = (
-        farmacos_periodo_qs.aggregate(total=Sum("cantidad")).get("total") or 0
-    )
-
-    categoria_labels = []
-    categoria_data = []
-    categoria_lookup = dict(Farmaco.Categoria.choices)
-    for registro in (
-        farmacos_periodo_qs.values("farmaco__categoria")
-        .annotate(total=Sum("cantidad"))
-        .order_by("-total")
-    ):
-        categoria = registro["farmaco__categoria"]
-        etiqueta = categoria_lookup.get(categoria, categoria or "Sin categoría")
-        categoria_labels.append(etiqueta)
-        categoria_data.append(registro["total"])
-
-    top_farmacos = []
-    for registro in (
-        farmacos_periodo_qs.values(
-            "farmaco__id",
-            "farmaco__nombre",
-            "farmaco__categoria",
-            "farmaco__sucursal__nombre",
-        )
-        .annotate(
-            total=Sum("cantidad"),
-            pacientes=Count("cita__paciente", distinct=True),
-        )
-        .order_by("-total")[:8]
-    ):
-        categoria = registro["farmaco__categoria"]
-        top_farmacos.append(
-            {
-                "nombre": registro["farmaco__nombre"],
-                "categoria": categoria_lookup.get(
-                    categoria, categoria or "Sin categoría"
-                ),
-                "total": registro["total"],
-                "pacientes": registro["pacientes"],
-                "sucursal": registro["farmaco__sucursal__nombre"],
-            }
+        farmacos_periodo_qs = farmacos_utilizados_qs.filter(
+            registrado__gte=inicio_periodo_inventario
         )
 
-    propietarios_qs = Propietario.objects.select_related("user")
-    propietarios_qs = propietarios_qs.order_by(
-        "user__first_name", "user__last_name", "user__username"
-    )
-    if sucursal_seleccionada is not None:
-        propietarios_qs = propietarios_qs.filter(
-            paciente__cita__sucursal=sucursal_seleccionada
-        ).distinct()
-    elif not usuario.is_superuser and getattr(usuario, "sucursal_id", None):
-        propietarios_qs = propietarios_qs.filter(
-            paciente__cita__sucursal_id=usuario.sucursal_id
-        ).distinct()
-
-    propietarios_farmacos = list(
-        farmacos_qs.order_by("nombre").values("id", "nombre")[:150]
-    )
-
-    expediente_periodos = {
-        "todo": {"label": "Todo el historial", "dias": None},
-        "30": {"label": "Últimos 30 días", "dias": 30},
-        "90": {"label": "Últimos 90 días", "dias": 90},
-        "365": {"label": "Últimos 12 meses", "dias": 365},
-    }
-    expediente_periodo = request.GET.get("expediente_periodo", "todo")
-    if expediente_periodo not in expediente_periodos:
-        expediente_periodo = "todo"
-
-    propietario_q = (request.GET.get("propietario_q") or "").strip()
-    propietario_farmaco = request.GET.get("propietario_farmaco", "").strip()
-
-    if propietario_q:
-        propietarios_qs = propietarios_qs.filter(
-            Q(user__first_name__icontains=propietario_q)
-            | Q(user__last_name__icontains=propietario_q)
-            | Q(user__username__icontains=propietario_q)
-            | Q(user__email__icontains=propietario_q)
-            | Q(telefono__icontains=propietario_q)
-            | Q(paciente__nombre__icontains=propietario_q)
-        ).distinct()
-
-    dias_periodo_expediente = expediente_periodos[expediente_periodo]["dias"]
-    if dias_periodo_expediente:
-        inicio_expediente = timezone.now() - timedelta(days=dias_periodo_expediente)
-        propietarios_qs = propietarios_qs.filter(
-            Q(paciente__cita__fecha_solicitada__gte=inicio_expediente)
-            | Q(paciente__cita__fecha_hora__gte=inicio_expediente)
-        ).distinct()
-
-    if propietario_farmaco.isdigit():
-        propietarios_qs = propietarios_qs.filter(
-            paciente__cita__administraciones_farmacos__farmaco_id=int(propietario_farmaco)
-        ).distinct()
-
-    total_propietarios = propietarios_qs.count()
-    propietarios_para_descarga = list(propietarios_qs[:25])
-
-    rendimiento_veterinarios = []
-    for registro in (
-        citas_base.filter(estado="atendida", veterinario__isnull=False)
-        .values(
-            "veterinario__id",
-            "veterinario__first_name",
-            "veterinario__last_name",
-            "veterinario__username",
-            "veterinario__sucursal__nombre",
-        )
-        .annotate(
-            total=Count("id"),
-            pacientes=Count("paciente", distinct=True),
-            farmacos=Sum("administraciones_farmacos__cantidad"),
-        )
-        .order_by("-total")[:6]
-    ):
-        nombre = registro["veterinario__first_name"] or ""
-        apellido = registro["veterinario__last_name"] or ""
-        username = registro["veterinario__username"] or ""
-        nombre_visible = (f"{nombre} {apellido}" or username).strip()
-        if not nombre_visible:
-            nombre_visible = username
-        rendimiento_veterinarios.append(
-            {
-                "nombre": nombre_visible,
-                "sucursal": registro["veterinario__sucursal__nombre"],
-                "total": registro["total"],
-                "pacientes": registro["pacientes"],
-                "farmacos": registro["farmacos"] or 0,
-            }
+        total_farmacos_utilizados = (
+            farmacos_periodo_qs.aggregate(total=Sum("cantidad")).get("total") or 0
         )
 
-    propietarios_inventario_periodo = (
-        farmacos_periodo_qs.values("cita__paciente__propietario_id")
-        .exclude(cita__paciente__propietario_id__isnull=True)
-        .distinct()
-        .count()
-    )
-    veterinarios_inventario_periodo = (
-        farmacos_periodo_qs.values("cita__veterinario_id")
-        .exclude(cita__veterinario_id__isnull=True)
-        .distinct()
-        .count()
-    )
+        categoria_labels = []
+        categoria_data = []
+        categoria_lookup = dict(Farmaco.Categoria.choices)
+        for registro in (
+            farmacos_periodo_qs.values("farmaco__categoria")
+            .annotate(total=Sum("cantidad"))
+            .order_by("-total")
+        ):
+            categoria = registro["farmaco__categoria"]
+            etiqueta = categoria_lookup.get(categoria, categoria or "Sin categoría")
+            categoria_labels.append(etiqueta)
+            categoria_data.append(registro["total"])
 
-    resumen_inventario_periodo = {
-        "dispensaciones": total_farmacos_utilizados,
-        "propietarios": propietarios_inventario_periodo,
-        "veterinarios": veterinarios_inventario_periodo,
-    }
+        top_farmacos = []
+        for registro in (
+            farmacos_periodo_qs.values(
+                "farmaco__id",
+                "farmaco__nombre",
+                "farmaco__categoria",
+                "farmaco__sucursal__nombre",
+            )
+            .annotate(
+                total=Sum("cantidad"),
+                pacientes=Count("cita__paciente", distinct=True),
+            )
+            .order_by("-total")[:8]
+        ):
+            categoria = registro["farmaco__categoria"]
+            top_farmacos.append(
+                {
+                    "nombre": registro["farmaco__nombre"],
+                    "categoria": categoria_lookup.get(
+                        categoria, categoria or "Sin categoría"
+                    ),
+                    "total": registro["total"],
+                    "pacientes": registro["pacientes"],
+                    "sucursal": registro["farmaco__sucursal__nombre"],
+                }
+            )
 
-    categorias_destacadas = [
-        {"nombre": categoria_labels[idx], "total": categoria_data[idx]}
-        for idx in range(len(categoria_labels))
-    ][:6]
+        propietarios_qs = Propietario.objects.select_related("user")
+        propietarios_qs = propietarios_qs.order_by(
+            "user__first_name", "user__last_name", "user__username"
+        )
+        if sucursal_seleccionada is not None:
+            propietarios_qs = propietarios_qs.filter(
+                paciente__cita__sucursal=sucursal_seleccionada
+            ).distinct()
+        elif not usuario.is_superuser and getattr(usuario, "sucursal_id", None):
+            propietarios_qs = propietarios_qs.filter(
+                paciente__cita__sucursal_id=usuario.sucursal_id
+            ).distinct()
 
-    momento_actual = timezone.localtime(timezone.now())
+        propietarios_farmacos = list(
+            farmacos_qs.order_by("nombre").values("id", "nombre")[:150]
+        )
 
-    if sucursal_seleccionada is not None:
-        export_sucursal_param = str(sucursal_seleccionada.id)
-    elif usuario.is_superuser and (sucursal_param == "todas" or not sucursal_param):
-        export_sucursal_param = "todas"
-    else:
-        export_sucursal_param = ""
+        expediente_periodos = {
+            "todo": {"label": "Todo el historial", "dias": None},
+            "30": {"label": "Últimos 30 días", "dias": 30},
+            "90": {"label": "Últimos 90 días", "dias": 90},
+            "365": {"label": "Últimos 12 meses", "dias": 365},
+        }
+        expediente_periodo = request.GET.get("expediente_periodo", "todo")
+        if expediente_periodo not in expediente_periodos:
+            expediente_periodo = "todo"
 
-    context = {
-        "sucursales": sucursales,
-        "sucursal_seleccionada": sucursal_seleccionada,
-        "sucursal_param": sucursal_param,
-        "mostrar_opcion_todas": mostrar_opcion_todas,
-        "top_farmacos": top_farmacos,
-        "categorias_destacadas": categorias_destacadas,
-        "propietarios_para_descarga": propietarios_para_descarga,
-        "propietarios_total": total_propietarios,
-        "rendimiento_veterinarios": rendimiento_veterinarios,
-        "momento_actual": momento_actual,
-        "grafico_categorias_labels": json.dumps(categoria_labels),
-        "grafico_categorias_data": json.dumps(categoria_data),
-        "export_sucursal_param": export_sucursal_param,
-        "inventario_periodo": inventario_periodo,
-        "inventario_periodos": periodos_inventario,
-        "inventario_periodo_label": inventario_periodo_info["label"],
-        "resumen_inventario_periodo": resumen_inventario_periodo,
-        "expediente_periodo": expediente_periodo,
-        "expediente_periodos": expediente_periodos,
-        "propietario_q": propietario_q,
-        "propietario_farmaco": propietario_farmaco,
-        "propietarios_farmacos": propietarios_farmacos,
-    }
+        propietario_q = (request.GET.get("propietario_q") or "").strip()
+        propietario_farmaco = request.GET.get("propietario_farmaco", "").strip()
 
-    return render(request, "core/dashboard_admin_analisis.html", context)
+        if propietario_q:
+            propietarios_qs = propietarios_qs.filter(
+                Q(user__first_name__icontains=propietario_q)
+                | Q(user__last_name__icontains=propietario_q)
+                | Q(user__username__icontains=propietario_q)
+                | Q(user__email__icontains=propietario_q)
+                | Q(telefono__icontains=propietario_q)
+                | Q(paciente__nombre__icontains=propietario_q)
+            ).distinct()
+
+        dias_periodo_expediente = expediente_periodos[expediente_periodo]["dias"]
+        if dias_periodo_expediente:
+            inicio_expediente = timezone.now() - timedelta(
+                days=dias_periodo_expediente
+            )
+            propietarios_qs = propietarios_qs.filter(
+                Q(paciente__cita__fecha_solicitada__gte=inicio_expediente)
+                | Q(paciente__cita__fecha_hora__gte=inicio_expediente)
+            ).distinct()
+
+        if propietario_farmaco.isdigit():
+            propietarios_qs = propietarios_qs.filter(
+                paciente__cita__administraciones_farmacos__farmaco_id=int(
+                    propietario_farmaco
+                )
+            ).distinct()
+
+        total_propietarios = propietarios_qs.count()
+        propietarios_para_descarga = list(propietarios_qs[:25])
+
+        rendimiento_veterinarios = []
+        for registro in (
+            citas_base.filter(estado="atendida", veterinario__isnull=False)
+            .values(
+                "veterinario__id",
+                "veterinario__first_name",
+                "veterinario__last_name",
+                "veterinario__username",
+                "veterinario__sucursal__nombre",
+            )
+            .annotate(
+                total=Count("id"),
+                pacientes=Count("paciente", distinct=True),
+                farmacos=Sum("administraciones_farmacos__cantidad"),
+            )
+            .order_by("-total")[:6]
+        ):
+            nombre = registro["veterinario__first_name"] or ""
+            apellido = registro["veterinario__last_name"] or ""
+            username = registro["veterinario__username"] or ""
+            nombre_visible = (f"{nombre} {apellido}" or username).strip()
+            if not nombre_visible:
+                nombre_visible = username
+            rendimiento_veterinarios.append(
+                {
+                    "nombre": nombre_visible,
+                    "sucursal": registro["veterinario__sucursal__nombre"],
+                    "total": registro["total"],
+                    "pacientes": registro["pacientes"],
+                    "farmacos": registro["farmacos"] or 0,
+                }
+            )
+
+        propietarios_inventario_periodo = (
+            farmacos_periodo_qs.values("cita__paciente__propietario_id")
+            .exclude(cita__paciente__propietario_id__isnull=True)
+            .distinct()
+            .count()
+        )
+        veterinarios_inventario_periodo = (
+            farmacos_periodo_qs.values("cita__veterinario_id")
+            .exclude(cita__veterinario_id__isnull=True)
+            .distinct()
+            .count()
+        )
+
+        resumen_inventario_periodo = {
+            "dispensaciones": total_farmacos_utilizados,
+            "propietarios": propietarios_inventario_periodo,
+            "veterinarios": veterinarios_inventario_periodo,
+        }
+
+        categorias_destacadas = [
+            {"nombre": categoria_labels[idx], "total": categoria_data[idx]}
+            for idx in range(len(categoria_labels))
+        ][:6]
+
+        momento_actual = timezone.localtime(timezone.now())
+
+        if sucursal_seleccionada is not None:
+            export_sucursal_param = str(sucursal_seleccionada.id)
+        elif usuario.is_superuser and (
+            sucursal_param == "todas" or not sucursal_param
+        ):
+            export_sucursal_param = "todas"
+        else:
+            export_sucursal_param = ""
+
+        context = {
+            "sucursales": sucursales,
+            "sucursal_seleccionada": sucursal_seleccionada,
+            "sucursal_param": sucursal_param,
+            "mostrar_opcion_todas": mostrar_opcion_todas,
+            "top_farmacos": top_farmacos,
+            "categorias_destacadas": categorias_destacadas,
+            "propietarios_para_descarga": propietarios_para_descarga,
+            "propietarios_total": total_propietarios,
+            "rendimiento_veterinarios": rendimiento_veterinarios,
+            "momento_actual": momento_actual,
+            "grafico_categorias_labels": json.dumps(categoria_labels),
+            "grafico_categorias_data": json.dumps(categoria_data),
+            "export_sucursal_param": export_sucursal_param,
+            "inventario_periodo": inventario_periodo,
+            "inventario_periodos": periodos_inventario,
+            "inventario_periodo_label": inventario_periodo_info["label"],
+            "resumen_inventario_periodo": resumen_inventario_periodo,
+            "expediente_periodo": expediente_periodo,
+            "expediente_periodos": expediente_periodos,
+            "propietario_q": propietario_q,
+            "propietario_farmaco": propietario_farmaco,
+            "propietarios_farmacos": propietarios_farmacos,
+        }
+
+        return render(request, self.template_name, context)
 
 
 # ----------------------------
@@ -868,8 +895,7 @@ def dashboard_admin_analisis(request):
 # ----------------------------
 
 
-@login_required
-def exportar_inventario_excel(request):
+def _exportar_inventario_excel(request):
     usuario = request.user
     if not (usuario.is_superuser or usuario.rol == "ADMIN"):
         messages.error(
@@ -1078,8 +1104,12 @@ def exportar_inventario_excel(request):
     )
 
 
-@login_required
-def exportar_propietario_excel(request, propietario_id):
+class ExportarInventarioExcelView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _exportar_inventario_excel(request)
+
+
+def _exportar_propietario_excel(request, propietario_id):
     usuario = request.user
     if not (usuario.is_superuser or usuario.rol == "ADMIN"):
         messages.error(
@@ -1322,6 +1352,11 @@ def exportar_propietario_excel(request, propietario_id):
     return _excel_sections_response(filename, secciones)
 
 
+class ExportarPropietarioExcelView(LoginRequiredMixin, View):
+    def get(self, request, propietario_id, *args, **kwargs):
+        return _exportar_propietario_excel(request, propietario_id)
+
+
 # ----------------------------
 # Mascotas y propietarios
 # ----------------------------
@@ -1329,8 +1364,7 @@ def exportar_propietario_excel(request, propietario_id):
 # ----------------------------
 
 
-@login_required
-def calendario_vacunas(request):
+def _calendario_vacunas(request):
     if request.user.rol != "OWNER":
         messages.error(request, "Acceso exclusivo para propietarios.")
         return redirect("dashboard")
@@ -1517,15 +1551,26 @@ def calendario_vacunas(request):
     )
 
 
-@login_required
-def mis_mascotas(request):
+class CalendarioVacunasView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _calendario_vacunas(request)
+
+    def post(self, request, *args, **kwargs):
+        return _calendario_vacunas(request)
+
+
+def _mis_mascotas(request):
     propietario = get_object_or_404(Propietario, user=request.user)
     mascotas = Paciente.objects.filter(propietario=propietario)
     return render(request, "core/mis_mascotas.html", {"mascotas": mascotas})
 
 
-@login_required
-def detalle_mascota(request, paciente_id):
+class MisMascotasView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _mis_mascotas(request)
+
+
+def _detalle_mascota(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
 
     if request.user.rol == "OWNER" and paciente.propietario.user != request.user:
@@ -1601,8 +1646,12 @@ def detalle_mascota(request, paciente_id):
     )
 
 
-@login_required
-def registrar_historial(request, paciente_id):
+class DetalleMascotaView(LoginRequiredMixin, View):
+    def get(self, request, paciente_id, *args, **kwargs):
+        return _detalle_mascota(request, paciente_id)
+
+
+def _registrar_historial(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
 
     if request.user.rol != "VET":
@@ -1673,8 +1722,15 @@ def registrar_historial(request, paciente_id):
     )
 
 
-@login_required
-def listar_usuarios(request):
+class RegistrarHistorialView(LoginRequiredMixin, View):
+    def get(self, request, paciente_id, *args, **kwargs):
+        return _registrar_historial(request, paciente_id)
+
+    def post(self, request, paciente_id, *args, **kwargs):
+        return _registrar_historial(request, paciente_id)
+
+
+def _listar_usuarios(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para ver esta página.")
         return redirect("dashboard")
@@ -1683,8 +1739,12 @@ def listar_usuarios(request):
     return render(request, "core/usuarios.html", {"usuarios": usuarios})
 
 
-@login_required
-def listar_pacientes(request):
+class ListarUsuariosView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _listar_usuarios(request)
+
+
+def _listar_pacientes(request):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para ver esta página.")
         return redirect("dashboard")
@@ -1693,8 +1753,12 @@ def listar_pacientes(request):
     return render(request, "core/pacientes.html", {"pacientes": pacientes})
 
 
-@login_required
-def registrar_mascota(request):
+class ListarPacientesView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _listar_pacientes(request)
+
+
+def _registrar_mascota(request):
     if request.user.rol != "OWNER":
         messages.error(request, "No tienes permiso para registrar mascotas.")
         return redirect("dashboard")
@@ -1745,13 +1809,20 @@ def registrar_mascota(request):
     )
 
 
+class RegistrarMascotaView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _registrar_mascota(request)
+
+    def post(self, request, *args, **kwargs):
+        return _registrar_mascota(request)
+
+
 # ----------------------------
 # Citas
 # ----------------------------
 
 
-@login_required
-def mis_citas(request):
+def _mis_citas(request):
     user = request.user
     filtros_estado = request.GET.get("estado", "").strip()
     filtro_busqueda = request.GET.get("q", "").strip()
@@ -1883,8 +1954,12 @@ def mis_citas(request):
     return render(request, "core/mis_citas.html", context)
 
 
-@login_required
-def agendar_cita(request, paciente_id=None):
+class MisCitasView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _mis_citas(request)
+
+
+def _agendar_cita(request, paciente_id=None):
     if request.user.rol != "OWNER":
         messages.error(request, "No tienes permiso para agendar citas.")
         return redirect("dashboard")
@@ -1966,8 +2041,15 @@ def agendar_cita(request, paciente_id=None):
     )
 
 
-@login_required
-def asignar_veterinario_cita(request, cita_id):
+class AgendarCitaView(LoginRequiredMixin, View):
+    def get(self, request, paciente_id=None, *args, **kwargs):
+        return _agendar_cita(request, paciente_id)
+
+    def post(self, request, paciente_id=None, *args, **kwargs):
+        return _agendar_cita(request, paciente_id)
+
+
+def _asignar_veterinario_cita(request, cita_id):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para asignar veterinarios a las citas.")
         return redirect("dashboard")
@@ -2049,8 +2131,15 @@ def asignar_veterinario_cita(request, cita_id):
     )
 
 
-@login_required
-def listar_citas_admin(request):
+class AsignarVeterinarioCitaView(LoginRequiredMixin, View):
+    def get(self, request, cita_id, *args, **kwargs):
+        return _asignar_veterinario_cita(request, cita_id)
+
+    def post(self, request, cita_id, *args, **kwargs):
+        return _asignar_veterinario_cita(request, cita_id)
+
+
+def _listar_citas_admin(request):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para ver esta página.")
         return redirect("dashboard")
@@ -2243,8 +2332,15 @@ def listar_citas_admin(request):
     return render(request, "core/citas_admin.html", context)
 
 
-@login_required
-def asignar_veterinario_citas(request):
+class ListarCitasAdminView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _listar_citas_admin(request)
+
+    def post(self, request, *args, **kwargs):
+        return _listar_citas_admin(request)
+
+
+def _asignar_veterinario_citas(request):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para gestionar estas citas.")
         return redirect("dashboard")
@@ -2358,8 +2454,15 @@ def asignar_veterinario_citas(request):
     )
 
 
-@login_required
-def atender_cita(request, cita_id):
+class AsignarVeterinarioCitasView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _asignar_veterinario_citas(request)
+
+    def post(self, request, *args, **kwargs):
+        return _asignar_veterinario_citas(request)
+
+
+def _atender_cita(request, cita_id):
     cita = get_object_or_404(
         Cita.objects.select_related("paciente", "paciente__propietario__user")
         .prefetch_related("farmacos_utilizados", "administraciones_farmacos__farmaco"),
@@ -2669,8 +2772,15 @@ def atender_cita(request, cita_id):
     return render(request, "core/atender_cita.html", contexto)
 
 
-@login_required
-def mis_historiales(request):
+
+class AtenderCitaView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _atender_cita(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _atender_cita(request, *args, **kwargs)
+
+def _mis_historiales(request):
     if request.user.rol != "VET":
         messages.error(request, "No tienes permiso para ver esta página.")
         return redirect("dashboard")
@@ -2681,8 +2791,12 @@ def mis_historiales(request):
     return render(request, "core/mis_historiales.html", {"historiales": historiales})
 
 
-@login_required
-def detalle_cita(request, cita_id):
+class MisHistorialesView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _mis_historiales(request)
+
+
+def _detalle_cita(request, cita_id):
     base_queryset = (
         Cita.objects.select_related(
             "paciente",
@@ -2741,8 +2855,12 @@ def detalle_cita(request, cita_id):
     )
 
 
-@login_required
-def agendar_cita_admin(request):
+
+class DetalleCitaView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _detalle_cita(request, *args, **kwargs)
+
+def _agendar_cita_admin(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para agendar citas.")
         return redirect("dashboard")
@@ -2851,8 +2969,15 @@ def agendar_cita_admin(request):
     )
 
 
-@login_required
-def crear_propietario_admin(request):
+
+class AgendarCitaAdminView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _agendar_cita_admin(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _agendar_cita_admin(request, *args, **kwargs)
+
+def _crear_propietario_admin(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para esta acción.")
         return redirect("dashboard")
@@ -2904,8 +3029,15 @@ def crear_propietario_admin(request):
     )
 
 
-@login_required
-def crear_mascota_admin(request):
+
+class CrearPropietarioAdminView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _crear_propietario_admin(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _crear_propietario_admin(request, *args, **kwargs)
+
+def _crear_mascota_admin(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para esta acción.")
         return redirect("dashboard")
@@ -2968,8 +3100,15 @@ def crear_mascota_admin(request):
     )
 
 
-@login_required
-def buscar_propietarios(request):
+
+class CrearMascotaAdminView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _crear_mascota_admin(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _crear_mascota_admin(request, *args, **kwargs)
+
+def _buscar_propietarios(request):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para esta acción.")
         return redirect("dashboard")
@@ -3005,8 +3144,12 @@ def buscar_propietarios(request):
     )
 
 
-@login_required
-def detalle_propietario(request, propietario_id):
+
+class BuscarPropietariosView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _buscar_propietarios(request, *args, **kwargs)
+
+def _detalle_propietario(request, propietario_id):
     if request.user.rol not in {"ADMIN", "ADMIN_OP"}:
         messages.error(request, "No tienes permiso para esta acción.")
         return redirect("dashboard")
@@ -3040,8 +3183,12 @@ def detalle_propietario(request, propietario_id):
     )
 
 
-@login_required
-def gestionar_veterinarios(request):
+
+class DetallePropietarioView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _detalle_propietario(request, *args, **kwargs)
+
+def _gestionar_veterinarios(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para gestionar veterinarios.")
         return redirect("dashboard")
@@ -3096,8 +3243,15 @@ def gestionar_veterinarios(request):
     )
 
 
-@login_required
-def inventario_farmacos_admin(request):
+
+class GestionarVeterinariosView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _gestionar_veterinarios(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _gestionar_veterinarios(request, *args, **kwargs)
+
+def _inventario_farmacos_admin(request):
     usuario = request.user
     if usuario.rol != "ADMIN" and not usuario.is_superuser:
         messages.error(request, "Acceso exclusivo para administradores.")
@@ -3255,8 +3409,15 @@ def inventario_farmacos_admin(request):
     return render(request, "core/inventario_farmacos_admin.html", contexto)
 
 
-@login_required
-def dashboard_veterinarios(request):
+
+class InventarioFarmacosAdminView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _inventario_farmacos_admin(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _inventario_farmacos_admin(request, *args, **kwargs)
+
+def _dashboard_veterinarios(request):
     if request.user.rol != "ADMIN":
         return redirect("dashboard")
 
@@ -3423,8 +3584,12 @@ def dashboard_veterinarios(request):
     )
 
 
-@login_required
-def inventario_farmacos_veterinario(request):
+
+class DashboardVeterinariosView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _dashboard_veterinarios(request, *args, **kwargs)
+
+def _inventario_farmacos_veterinario(request):
     if request.user.rol != "VET":
         messages.error(request, "Acceso exclusivo para el equipo veterinario.")
         return redirect("dashboard")
@@ -3500,8 +3665,12 @@ def inventario_farmacos_veterinario(request):
     return render(request, "core/inventario_farmacos_vet.html", contexto)
 
 
-@login_required
-def dashboard_veterinarios_indicadores(request):
+
+class InventarioFarmacosVeterinarioView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _inventario_farmacos_veterinario(request, *args, **kwargs)
+
+def _dashboard_veterinarios_indicadores(request):
     if request.user.rol not in {"ADMIN", "ADMIN_OP", "VET"}:
         messages.error(request, "No tienes permiso para acceder a los indicadores estratégicos.")
         return redirect("dashboard")
@@ -3653,8 +3822,12 @@ def dashboard_veterinarios_indicadores(request):
     )
 
 
-@login_required
-def historial_medico_vet(request):
+
+class DashboardVeterinariosIndicadoresView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _dashboard_veterinarios_indicadores(request, *args, **kwargs)
+
+def _historial_medico_vet(request):
     if request.user.rol not in {"ADMIN", "VET"}:
         messages.error(request, "No tienes permiso para acceder a esta sección.")
         return redirect("dashboard")
@@ -3746,8 +3919,12 @@ def historial_medico_vet(request):
     return render(request, "core/historial_medico_vet.html", contexto)
 
 
-@login_required
-def detalle_historial(request, historial_id):
+
+class HistorialMedicoVetView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _historial_medico_vet(request, *args, **kwargs)
+
+def _detalle_historial(request, historial_id):
     historial = get_object_or_404(HistorialMedico, id=historial_id)
     return render(request, "core/detalle_historial.html", {"historial": historial})
 
@@ -3757,8 +3934,12 @@ def detalle_historial(request, historial_id):
 # ----------------------------
 
 
-@login_required
-def admin_productos_list(request):
+
+class DetalleHistorialView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _detalle_historial(request, *args, **kwargs)
+
+def _admin_productos_list(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para gestionar la tienda.")
         return redirect("dashboard")
@@ -3774,8 +3955,12 @@ def admin_productos_list(request):
     return render(request, "core/admin_productos_list.html", {"productos": productos})
 
 
-@login_required
-def admin_producto_crear(request):
+
+class AdminProductosListView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _admin_productos_list(request, *args, **kwargs)
+
+def _admin_producto_crear(request):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para gestionar la tienda.")
         return redirect("dashboard")
@@ -3805,8 +3990,15 @@ def admin_producto_crear(request):
     )
 
 
-@login_required
-def admin_producto_editar(request, producto_id):
+
+class AdminProductoCrearView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _admin_producto_crear(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _admin_producto_crear(request, *args, **kwargs)
+
+def _admin_producto_editar(request, producto_id):
     if request.user.rol != "ADMIN":
         messages.error(request, "No tienes permiso para gestionar la tienda.")
         return redirect("dashboard")
@@ -3838,11 +4030,19 @@ def admin_producto_editar(request, producto_id):
     )
 
 
+
+class AdminProductoEditarView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _admin_producto_editar(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _admin_producto_editar(request, *args, **kwargs)
+
 # ----------------------------
 # Autenticación
 # ----------------------------
 
-def login_view(request):
+def _login_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
@@ -3854,12 +4054,28 @@ def login_view(request):
     return render(request, "core/login.html")
 
 
-def logout_view(request):
+
+class LoginView(View):
+    def get(self, request, *args, **kwargs):
+        return _login_view(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _login_view(request, *args, **kwargs)
+
+def _logout_view(request):
     logout(request)
     return redirect("login")
 
 
-def registro_propietario(request):
+
+class LogoutView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        return _logout_view(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _logout_view(request, *args, **kwargs)
+
+def _registro_propietario(request):
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email")
@@ -3889,3 +4105,11 @@ def registro_propietario(request):
             return redirect("login")
 
     return render(request, "core/registro_propietario.html")
+
+
+class RegistroPropietarioView(View):
+    def get(self, request, *args, **kwargs):
+        return _registro_propietario(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return _registro_propietario(request, *args, **kwargs)
