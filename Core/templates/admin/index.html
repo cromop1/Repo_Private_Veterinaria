@@ -10,143 +10,154 @@
 {% admin_model_count app_list as model_count %}
 {% get_admin_log 6 as hero_admin_log for_user user %}
 <div class="sf-dashboard">
-    <section class="sf-card sf-hero">
-        <div class="sf-hero-top">
-            <div class="sf-hero-copy">
-                <p class="eyebrow">{% trans 'Panel principal' %}</p>
-                <h1>{% trans 'Administra con precisión en blanco y negro' %}</h1>
+    <div class="sf-dashboard__inner">
+        <header class="sf-panel sf-hero" aria-labelledby="admin-hero-title">
+            <div class="sf-hero__text">
+                <p class="sf-kicker">{% trans 'Panel principal' %}</p>
+                <h1 id="admin-hero-title" class="sf-hero__title">{% trans 'Administra con precisión en blanco y negro' %}</h1>
                 <p>{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
-                <div class="sf-hero-actions">
-                    <a class="sf-cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
-                    <a class="sf-cta" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
+                <div class="sf-hero__actions">
+                    <a class="sf-button primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
+                    <a class="sf-button secondary" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
                 </div>
             </div>
-            <div class="sf-hero-session">
-                <span class="hero-session-label">{% trans 'Sesión activa' %}</span>
-                <span class="hero-session-user">{% blocktrans with username=user.get_short_name|default:user.get_username %}Conectado como {{ username }}{% endblocktrans %}</span>
+            <div class="sf-hero__meta">
+                <span class="sf-hero__meta-label">{% trans 'Sesión activa' %}</span>
+                <span class="sf-hero__meta-user">{% blocktrans with username=user.get_short_name|default:user.get_username %}Conectado como {{ username }}{% endblocktrans %}</span>
             </div>
-        </div>
-        <ul class="sf-hero-stats">
-            <li class="sf-hero-stat">
-                <span class="label">{% trans 'Aplicaciones' %}</span>
-                <span class="value">{{ app_list|length }}</span>
-            </li>
-            <li class="sf-hero-stat">
-                <span class="label">{% trans 'Modelos gestionables' %}</span>
-                <span class="value">{{ model_count }}</span>
-            </li>
-            <li class="sf-hero-stat">
-                <span class="label">{% trans 'Acciones registradas' %}</span>
-                <span class="value">{{ hero_admin_log|length }}</span>
-            </li>
-        </ul>
-    </section>
+        </header>
 
-    <div class="sf-dashboard-columns">
-        <section class="sf-card sf-apps-card" id="dashboard-apps">
-            <div class="sf-section-heading">
-                <h2>{% trans 'Aplicaciones y modelos' %}</h2>
-                <p>{% trans 'Accedé a cada módulo con tarjetas claras y accesos rápidos para crear o gestionar información.' %}</p>
+        <section class="sf-section sf-stats" aria-labelledby="dashboard-stats-title">
+            <div class="sf-section__heading">
+                <h2 id="dashboard-stats-title">{% trans 'Resumen instantáneo' %}</h2>
+                <p>{% trans 'Seguimiento rápido de los módulos que impulsan tu operación diaria.' %}</p>
             </div>
-            {% if app_list %}
-                <div class="sf-app-grid">
-                {% for app in app_list %}
-                    <article class="sf-app-card" data-app-label="{{ app.app_label }}">
-                        <header>
-                            <div>
-                                <p class="eyebrow">{{ app.app_label|upper }}</p>
-                                <h3>{{ app.name }}</h3>
-                            </div>
-                            {% if app.app_url %}
-                                <a class="ghost-link" href="{{ app.app_url }}">{% trans 'Ver módulo' %}</a>
-                            {% endif %}
-                        </header>
-                        {% if app.models %}
-                            <ul class="sf-model-list">
-                            {% for model in app.models %}
-                                <li>
-                                    <div>
-                                        <span class="sf-model-name">{{ model.name }}</span>
-                                        {% if model.description %}
-                                            <span class="sf-model-meta">{{ model.description }}</span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="sf-model-actions">
-                                        {% if model.add_url %}
-                                            <a href="{{ model.add_url }}" class="sf-pill">{% trans 'Nuevo' %}</a>
-                                        {% endif %}
-                                        {% if model.admin_url %}
-                                            <a href="{{ model.admin_url }}" class="sf-pill secondary">{% trans 'Abrir' %}</a>
-                                        {% endif %}
-                                    </div>
-                                </li>
-                            {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="sf-empty">{% trans 'No hay modelos disponibles en esta aplicación.' %}</p>
-                        {% endif %}
-                    </article>
-                {% endfor %}
-                </div>
-            {% else %}
-                <p class="sf-empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
-            {% endif %}
+            <div class="sf-stats__grid" role="list">
+                <article class="sf-stat-card" role="listitem">
+                    <span class="label">{% trans 'Aplicaciones' %}</span>
+                    <span class="value">{{ app_list|length }}</span>
+                </article>
+                <article class="sf-stat-card" role="listitem">
+                    <span class="label">{% trans 'Modelos gestionables' %}</span>
+                    <span class="value">{{ model_count }}</span>
+                </article>
+                <article class="sf-stat-card" role="listitem">
+                    <span class="label">{% trans 'Acciones registradas' %}</span>
+                    <span class="value">{{ hero_admin_log|length }}</span>
+                </article>
+            </div>
         </section>
 
-        <aside class="sf-sidebar">
-            <section class="sf-card sf-quick-card" id="dashboard-quick">
-                <h3>{% trans 'Acciones inmediatas' %}</h3>
-                <p class="sf-card-description">{% trans 'Creá nuevos registros sin perder tiempo.' %}</p>
-                {% admin_quick_actions app_list 8 as quick_actions %}
-                {% if quick_actions %}
-                    <ul class="sf-quick-actions-list">
-                    {% for action in quick_actions %}
-                        <li>
-                            <a class="sf-quick-action" href="{{ action.url }}">
-                                <span class="sf-quick-action-label">{% blocktrans with model_name=action.name %}Nuevo {{ model_name }}{% endblocktrans %}</span>
-                                <span aria-hidden="true" class="sf-quick-action-icon">+</span>
-                            </a>
-                        </li>
-                    {% endfor %}
-                    </ul>
+        <div class="sf-layout">
+            <section class="sf-section sf-apps" id="dashboard-apps" aria-labelledby="dashboard-apps-title">
+                <div class="sf-section__heading">
+                    <h2 id="dashboard-apps-title">{% trans 'Aplicaciones y modelos' %}</h2>
+                    <p>{% trans 'Accedé a cada módulo con tarjetas claras y accesos rápidos para crear o gestionar información.' %}</p>
+                </div>
+                {% if app_list %}
+                    <div class="sf-apps__grid">
+                        {% for app in app_list %}
+                            <article class="sf-app-card" data-app-label="{{ app.app_label }}">
+                                <header>
+                                    <div>
+                                        <p class="eyebrow">{{ app.app_label|upper }}</p>
+                                        <h3>{{ app.name }}</h3>
+                                    </div>
+                                    {% if app.app_url %}
+                                        <a class="ghost-link" href="{{ app.app_url }}">{% trans 'Ver módulo' %}</a>
+                                    {% endif %}
+                                </header>
+                                {% if app.models %}
+                                    <ul class="sf-model-list">
+                                        {% for model in app.models %}
+                                            <li>
+                                                <div>
+                                                    <span class="sf-model-name">{{ model.name }}</span>
+                                                    {% if model.description %}
+                                                        <span class="sf-model-meta">{{ model.description }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="sf-model-actions">
+                                                    {% if model.add_url %}
+                                                        <a href="{{ model.add_url }}" class="sf-pill">{% trans 'Nuevo' %}</a>
+                                                    {% endif %}
+                                                    {% if model.admin_url %}
+                                                        <a href="{{ model.admin_url }}" class="sf-pill secondary">{% trans 'Abrir' %}</a>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="sf-empty">{% trans 'No hay modelos disponibles en esta aplicación.' %}</p>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
                 {% else %}
-                    <p class="sf-empty">{% trans 'No hay acciones disponibles en este momento.' %}</p>
+                    <p class="sf-empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
                 {% endif %}
             </section>
 
-            <section class="sf-card sf-activity-card" id="dashboard-activity">
-                <h3>{% trans 'Actividad reciente' %}</h3>
-                <p class="sf-card-description">{% trans 'Revisá los últimos movimientos registrados en el sistema.' %}</p>
-                {% get_admin_log 10 as admin_log for_user user %}
-                {% if not admin_log %}
-                    <p class="sf-empty">{% trans 'Aún no se registraron movimientos.' %}</p>
-                {% else %}
-                    <ul class="sf-recent-list">
-                    {% for entry in admin_log %}
-                        <li class="recent-entry{% if entry.is_addition %} add{% elif entry.is_change %} change{% elif entry.is_deletion %} delete{% endif %}">
-                            <div class="sf-recent-main">
-                                {% if entry.is_deletion or not entry.get_admin_url %}
-                                    <span class="sf-recent-object">{{ entry.object_repr }}</span>
-                                {% else %}
-                                    <a class="sf-recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
-                                {% endif %}
-                                <span class="sf-recent-meta">
-                                    {% if entry.content_type %}
-                                        {{ entry.content_type.name|capfirst }} · {{ entry.action_time|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        {% trans 'Contenido desconocido' %}
-                                    {% endif %}
-                                </span>
-                            </div>
-                            <span class="sf-recent-badge">
-                                {% if entry.is_addition %}{% trans 'Alta' %}{% elif entry.is_change %}{% trans 'Actualización' %}{% elif entry.is_deletion %}{% trans 'Eliminación' %}{% endif %}
-                            </span>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                {% endif %}
-            </section>
-        </aside>
+            <aside class="sf-sidebar" aria-label="{% trans 'Panel lateral' %}">
+                <section class="sf-card-panel" id="dashboard-quick">
+                    <div>
+                        <h3>{% trans 'Acciones inmediatas' %}</h3>
+                        <p class="sf-card-description">{% trans 'Creá nuevos registros sin perder tiempo.' %}</p>
+                    </div>
+                    {% admin_quick_actions app_list 8 as quick_actions %}
+                    {% if quick_actions %}
+                        <ul class="sf-quick-actions-list">
+                            {% for action in quick_actions %}
+                                <li>
+                                    <a class="sf-quick-action" href="{{ action.url }}">
+                                        <span class="sf-quick-action-label">{% blocktrans with model_name=action.name %}Nuevo {{ model_name }}{% endblocktrans %}</span>
+                                        <span aria-hidden="true" class="sf-quick-action-icon">+</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="sf-empty">{% trans 'No hay acciones disponibles en este momento.' %}</p>
+                    {% endif %}
+                </section>
+
+                <section class="sf-card-panel" id="dashboard-activity">
+                    <div>
+                        <h3>{% trans 'Actividad reciente' %}</h3>
+                        <p class="sf-card-description">{% trans 'Revisá los últimos movimientos registrados en el sistema.' %}</p>
+                    </div>
+                    {% get_admin_log 10 as admin_log for_user user %}
+                    {% if not admin_log %}
+                        <p class="sf-empty">{% trans 'Aún no se registraron movimientos.' %}</p>
+                    {% else %}
+                        <ul class="sf-recent-list">
+                            {% for entry in admin_log %}
+                                <li class="recent-entry{% if entry.is_addition %} add{% elif entry.is_change %} change{% elif entry.is_deletion %} delete{% endif %}">
+                                    <div class="sf-recent-main">
+                                        {% if entry.is_deletion or not entry.get_admin_url %}
+                                            <span class="sf-recent-object">{{ entry.object_repr }}</span>
+                                        {% else %}
+                                            <a class="sf-recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                                        {% endif %}
+                                        <span class="sf-recent-meta">
+                                            {% if entry.content_type %}
+                                                {{ entry.content_type.name|capfirst }} · {{ entry.action_time|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                                {% trans 'Contenido desconocido' %}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <span class="sf-recent-badge">
+                                        {% if entry.is_addition %}{% trans 'Alta' %}{% elif entry.is_change %}{% trans 'Actualización' %}{% elif entry.is_deletion %}{% trans 'Eliminación' %}{% endif %}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </section>
+            </aside>
+        </div>
     </div>
 </div>
 {% endblock %}
