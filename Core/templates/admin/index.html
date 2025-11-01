@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% load i18n log admin_dashboard %}
 
-{% block bodyclass %}{{ block.super }} dashboard refined-dashboard{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard sf-dashboard{% endblock %}
 {% block nav-breadcrumbs %}{% endblock %}
 {% block nav-sidebar %}{% endblock %}
 {% block sidebar %}{% endblock %}
@@ -9,64 +9,51 @@
 {% block content %}
 {% admin_model_count app_list as model_count %}
 {% get_admin_log 6 as hero_admin_log for_user user %}
-<div class="dashboard-shell">
-    <section class="dashboard-hero">
-        <div class="hero-copy">
-            <p class="hero-badge">{% trans 'Panel principal' %}</p>
-            <h1>{% trans 'Administración precisa en blanco y negro' %}</h1>
-            <p class="hero-description">{% trans 'Supervisá pacientes, citas, inventario y reportes en una interfaz sobria que prioriza lo esencial y mantiene todo en perfecto equilibrio.' %}</p>
-            <div class="hero-actions">
-                <a class="cta primary" href="#dashboard-apps">{% trans 'Ir a mis aplicaciones' %}</a>
-                <a class="cta" href="#dashboard-activity">{% trans 'Últimos movimientos' %}</a>
+<div class="sf-dashboard-shell">
+    <section class="sf-dashboard-hero">
+        <div class="sf-hero-text">
+            <p class="eyebrow">{% trans 'Panel principal' %}</p>
+            <h1>{% trans 'Administra con precisión en blanco y negro' %}</h1>
+            <p>{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
+            <div class="sf-hero-actions">
+                <a class="sf-cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
+                <a class="sf-cta" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
             </div>
             <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión activa como {{ username }}{% endblocktrans %}</p>
         </div>
-        <div class="hero-overview">
-            <article class="hero-card">
-                <h2>{% trans 'Resumen al instante' %}</h2>
-                <p>{% trans 'Monitoreá tus módulos clave con métricas concisas y un acceso directo a lo más importante.' %}</p>
-                <ul class="hero-highlights">
-                    <li><span class="highlight-value">{{ app_list|length }}</span> {% trans 'aplicaciones activas' %}</li>
-                    <li><span class="highlight-value">{{ model_count }}</span> {% trans 'modelos listos para administrar' %}</li>
-                    <li><span class="highlight-value">{{ hero_admin_log|length }}</span> {% trans 'acciones registradas recientemente' %}</li>
-                </ul>
-            </article>
-            <div class="hero-stats">
-                <article class="metric-card">
-                    <span class="metric-value">{{ app_list|length }}</span>
-                    <span class="metric-label">
-                        {% blocktrans count app_count=app_list|length %}Aplicación registrada{% plural %}Aplicaciones registradas{% endblocktrans %}
-                    </span>
-                </article>
-                <article class="metric-card">
-                    <span class="metric-value">{{ model_count }}</span>
-                    <span class="metric-label">
-                        {% blocktrans count model_count=model_count %}Modelo gestionable{% plural %}Modelos gestionables{% endblocktrans %}
-                    </span>
-                </article>
-                <article class="metric-card">
-                    <span class="metric-value">{{ hero_admin_log|length }}</span>
-                    <span class="metric-label">
-                        {% blocktrans count entry_count=hero_admin_log|length %}Acción reciente{% plural %}Acciones recientes{% endblocktrans %}
-                    </span>
-                </article>
-            </div>
+        <div class="sf-hero-summary">
+            <h2>{% trans 'Resumen instantáneo' %}</h2>
+            <p>{% trans 'Seguimiento rápido de los módulos que impulsan tu operación diaria.' %}</p>
+            <dl class="sf-hero-metrics">
+                <div class="sf-hero-metric">
+                    <dt>{% trans 'Aplicaciones' %}</dt>
+                    <dd>{{ app_list|length }}</dd>
+                </div>
+                <div class="sf-hero-metric">
+                    <dt>{% trans 'Modelos gestionables' %}</dt>
+                    <dd>{{ model_count }}</dd>
+                </div>
+                <div class="sf-hero-metric">
+                    <dt>{% trans 'Acciones registradas' %}</dt>
+                    <dd>{{ hero_admin_log|length }}</dd>
+                </div>
+            </dl>
         </div>
     </section>
 
-    <div class="dashboard-layout">
-        <div class="app-section" id="dashboard-apps">
-            <div class="section-heading">
+    <div class="sf-dashboard-grid">
+        <section class="sf-card" id="dashboard-apps">
+            <div class="sf-section-heading">
                 <h2>{% trans 'Aplicaciones y modelos' %}</h2>
-                <p>{% trans 'Ingresá directo a los módulos clave o creá registros con un tablero minimalista y balanceado.' %}</p>
+                <p>{% trans 'Accedé a cada módulo con tarjetas claras y accesos rápidos para crear o gestionar información.' %}</p>
             </div>
             {% if app_list %}
-                <div class="app-grid">
+                <div class="sf-app-grid">
                 {% for app in app_list %}
-                    <section class="module app-card" data-app-label="{{ app.app_label }}">
-                        <header class="app-card-header">
+                    <article class="sf-app-card" data-app-label="{{ app.app_label }}">
+                        <header>
                             <div>
-                                <p class="app-card-eyebrow">{{ app.app_label|upper }}</p>
+                                <p class="eyebrow">{{ app.app_label|upper }}</p>
                                 <h3>{{ app.name }}</h3>
                             </div>
                             {% if app.app_url %}
@@ -74,38 +61,44 @@
                             {% endif %}
                         </header>
                         {% if app.models %}
-                            <ul class="model-list">
+                            <ul class="sf-model-list">
                             {% for model in app.models %}
                                 <li>
-                                    <div class="model-info">
-                                        <span class="model-name">{{ model.name }}</span>
-                                        {% if model.description %}<span class="model-meta">{{ model.description }}</span>{% endif %}
+                                    <div>
+                                        <span class="sf-model-name">{{ model.name }}</span>
+                                        {% if model.description %}
+                                            <span class="sf-model-meta">{{ model.description }}</span>
+                                        {% endif %}
                                     </div>
-                                    <div class="model-actions">
-                                        {% if model.add_url %}<a href="{{ model.add_url }}" class="pill">{% trans 'Crear' %}</a>{% endif %}
-                                        {% if model.admin_url %}<a href="{{ model.admin_url }}" class="pill secondary">{% trans 'Abrir' %}</a>{% endif %}
+                                    <div class="sf-model-actions">
+                                        {% if model.add_url %}
+                                            <a href="{{ model.add_url }}" class="sf-pill">{% trans 'Nuevo' %}</a>
+                                        {% endif %}
+                                        {% if model.admin_url %}
+                                            <a href="{{ model.admin_url }}" class="sf-pill secondary">{% trans 'Abrir' %}</a>
+                                        {% endif %}
                                     </div>
                                 </li>
                             {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="empty">{% trans 'No hay modelos disponibles en esta aplicación.' %}</p>
+                            <p class="sf-empty">{% trans 'No hay modelos disponibles en esta aplicación.' %}</p>
                         {% endif %}
-                    </section>
+                    </article>
                 {% endfor %}
                 </div>
             {% else %}
-                <p class="empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
+                <p class="sf-empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
             {% endif %}
-        </div>
+        </section>
 
-        <aside class="dashboard-aside">
-            <div class="aside-card quick-actions" id="dashboard-quick">
+        <aside class="sf-sidebar">
+            <section class="sf-card" id="dashboard-quick">
                 <h3>{% trans 'Acciones inmediatas' %}</h3>
-                <p class="aside-description">{% trans 'Creá nuevos registros en segundos.' %}</p>
+                <p class="sf-card-description">{% trans 'Creá nuevos registros sin perder tiempo.' %}</p>
                 {% admin_quick_actions app_list 8 as quick_actions %}
                 {% if quick_actions %}
-                    <ul class="quick-actions-list">
+                    <ul class="sf-quick-actions-list">
                     {% for action in quick_actions %}
                         <li>
                             <a href="{{ action.url }}">
@@ -116,27 +109,27 @@
                     {% endfor %}
                     </ul>
                 {% else %}
-                    <p class="empty">{% trans 'No hay acciones disponibles en este momento.' %}</p>
+                    <p class="sf-empty">{% trans 'No hay acciones disponibles en este momento.' %}</p>
                 {% endif %}
-            </div>
+            </section>
 
-            <div class="aside-card recent" id="dashboard-activity">
+            <section class="sf-card" id="dashboard-activity">
                 <h3>{% trans 'Actividad reciente' %}</h3>
-                <p class="aside-description">{% trans 'Consultá los últimos movimientos registrados.' %}</p>
+                <p class="sf-card-description">{% trans 'Revisá los últimos movimientos registrados en el sistema.' %}</p>
                 {% get_admin_log 10 as admin_log for_user user %}
                 {% if not admin_log %}
-                    <p class="empty">{% trans 'Aún no se registraron movimientos.' %}</p>
+                    <p class="sf-empty">{% trans 'Aún no se registraron movimientos.' %}</p>
                 {% else %}
-                    <ul class="recent-list">
+                    <ul class="sf-recent-list">
                     {% for entry in admin_log %}
                         <li class="recent-entry{% if entry.is_addition %} add{% elif entry.is_change %} change{% elif entry.is_deletion %} delete{% endif %}">
-                            <div class="recent-main">
+                            <div class="sf-recent-main">
                                 {% if entry.is_deletion or not entry.get_admin_url %}
-                                    <span class="recent-object">{{ entry.object_repr }}</span>
+                                    <span class="sf-recent-object">{{ entry.object_repr }}</span>
                                 {% else %}
-                                    <a class="recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                                    <a class="sf-recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
                                 {% endif %}
-                                <span class="recent-meta">
+                                <span class="sf-recent-meta">
                                     {% if entry.content_type %}
                                         {{ entry.content_type.name|capfirst }} · {{ entry.action_time|date:"d/m/Y H:i" }}
                                     {% else %}
@@ -144,14 +137,14 @@
                                     {% endif %}
                                 </span>
                             </div>
-                            <span class="recent-badge">
+                            <span class="sf-recent-badge">
                                 {% if entry.is_addition %}{% trans 'Alta' %}{% elif entry.is_change %}{% trans 'Actualización' %}{% elif entry.is_deletion %}{% trans 'Eliminación' %}{% endif %}
                             </span>
                         </li>
                     {% endfor %}
                     </ul>
                 {% endif %}
-            </div>
+            </section>
         </aside>
     </div>
 </div>
