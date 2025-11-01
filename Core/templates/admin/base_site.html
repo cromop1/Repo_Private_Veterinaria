@@ -12,7 +12,13 @@
 {% endblock %}
 
 {% block branding %}
-<div id="site-name">Sabueso Feliz · Admin</div>
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <span class="mark">SF</span>
+        <span class="wordmark">Sabueso Feliz</span>
+        <span class="divider">Admin</span>
+    </a>
+</h1>
 {% endblock %}
 
 {% block nav-global %}{% endblock %}

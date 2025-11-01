@@ -1,0 +1,73 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{% if form.errors %}{% translate "Error:" %} {% endif %}{{ block.super }}{% endblock %}
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+{% block usertools %}{% endblock %}
+{% block nav-global %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+<div class="login-shell">
+    <section class="login-intro">
+        <p class="eyebrow">{% trans 'Sabueso Feliz' %}</p>
+        <h1>{% trans 'Administración monocromática y elegante' %}</h1>
+        <p class="login-copy">{% trans 'Ingresá para acceder a las herramientas que mantienen tu veterinaria en equilibrio.' %}</p>
+        <ul class="login-highlights">
+            <li>{% trans 'Panel minimalista con foco en tus tareas diarias.' %}</li>
+            <li>{% trans 'Seguimiento inmediato de los movimientos más recientes.' %}</li>
+            <li>{% trans 'Experiencia en blanco y negro pensada para trabajar sin distracciones.' %}</li>
+        </ul>
+    </section>
+    <div class="login-card">
+        {% if form.errors and not form.non_field_errors %}
+            <p class="errornote">
+                {% blocktranslate count counter=form.errors.items|length %}Revisá el campo marcado.{% plural %}Revisá los campos marcados.{% endblocktranslate %}
+            </p>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <p class="errornote">{{ error }}</p>
+            {% endfor %}
+        {% endif %}
+
+        {% if user.is_authenticated %}
+            <p class="errornote">
+                {% blocktranslate trimmed %}
+                Iniciaste sesión como {{ username }}, pero no tenés permisos para acceder.
+                ¿Querés entrar con otra cuenta?
+                {% endblocktranslate %}
+            </p>
+        {% endif %}
+
+        <form action="{{ app_path }}" method="post" id="login-form">
+            {% csrf_token %}
+            <div class="form-row">
+                {{ form.username.errors }}
+                {{ form.username.label_tag }}
+                {{ form.username }}
+            </div>
+            <div class="form-row">
+                {{ form.password.errors }}
+                {{ form.password.label_tag }}
+                {{ form.password }}
+                <input type="hidden" name="next" value="{{ next }}">
+            </div>
+            {% url 'admin_password_reset' as password_reset_url %}
+            {% if password_reset_url %}
+                <div class="password-reset-link">
+                    <a href="{{ password_reset_url }}">{% trans '¿Olvidaste tu contraseña?' %}</a>
+                </div>
+            {% endif %}
+            <div class="submit-row">
+                <input type="submit" value="{% translate 'Log in' %}">
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}

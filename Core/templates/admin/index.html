@@ -1,46 +1,147 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n log admin_dashboard %}
+
+{% block bodyclass %}{{ block.super }} dashboard refined-dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block sidebar %}{% endblock %}
 
 {% block content %}
-<div class="dashboard">
-    <div class="intro">
-        <h1>Panel de control</h1>
-        <p>Gestioná pacientes, turnos y recursos desde un espacio sobrio y enfocado.</p>
-    </div>
-    {% if app_list %}
-        <div class="app-grid">
-        {% for app in app_list %}
-            <section class="module app-card">
-                <header>
-                    <h2>{{ app.name }}</h2>
-                    {% if app.app_url %}
-                        <a class="app-link" href="{{ app.app_url }}">{% trans 'Ver todo' %}</a>
-                    {% endif %}
-                </header>
-                {% if app.models %}
-                    <ul class="model-list">
-                    {% for model in app.models %}
+{% admin_model_count app_list as model_count %}
+{% get_admin_log 6 as hero_admin_log for_user user %}
+<div class="dashboard-shell">
+    <section class="dashboard-hero">
+        <div class="hero-text">
+            <p class="eyebrow">{% trans 'Panel principal' %}</p>
+            <h1>{% trans 'Control total en una sola mirada' %}</h1>
+            <p class="hero-description">{% trans 'Organizá pacientes, turnos y stock desde un tablero limpio, moderno y centrado en tu flujo de trabajo.' %}</p>
+            <div class="hero-actions">
+                <a class="cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
+                <a class="cta" href="#dashboard-activity">{% trans 'Ver actividad' %}</a>
+            </div>
+            <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión iniciada como {{ username }}{% endblocktrans %}</p>
+        </div>
+        <div class="hero-metrics">
+            <div class="metric-card">
+                <span class="metric-value">{{ app_list|length }}</span>
+                <span class="metric-label">
+                    {% blocktrans count app_count=app_list|length %}Aplicación registrada{% plural %}Aplicaciones registradas{% endblocktrans %}
+                </span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ model_count }}</span>
+                <span class="metric-label">
+                    {% blocktrans count model_count=model_count %}Modelo gestionable{% plural %}Modelos gestionables{% endblocktrans %}
+                </span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ hero_admin_log|length }}</span>
+                <span class="metric-label">
+                    {% blocktrans count entry_count=hero_admin_log|length %}Movimiento reciente{% plural %}Movimientos recientes{% endblocktrans %}
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-layout">
+        <div class="app-section" id="dashboard-apps">
+            <div class="section-heading">
+                <h2>{% trans 'Aplicaciones disponibles' %}</h2>
+                <p>{% trans 'Accedé a cada módulo y creá nuevos registros desde este panel minimalista.' %}</p>
+            </div>
+            {% if app_list %}
+                <div class="app-grid">
+                {% for app in app_list %}
+                    <section class="module app-card" data-app-label="{{ app.app_label }}">
+                        <header class="app-card-header">
+                            <div>
+                                <p class="app-card-eyebrow">{{ app.app_label|upper }}</p>
+                                <h3>{{ app.name }}</h3>
+                            </div>
+                            {% if app.app_url %}
+                                <a class="ghost-link" href="{{ app.app_url }}">{% trans 'Ver todo' %}</a>
+                            {% endif %}
+                        </header>
+                        {% if app.models %}
+                            <ul class="model-list">
+                            {% for model in app.models %}
+                                <li>
+                                    <div class="model-info">
+                                        <span class="model-name">{{ model.name }}</span>
+                                        {% if model.description %}<span class="model-meta">{{ model.description }}</span>{% endif %}
+                                    </div>
+                                    <div class="model-actions">
+                                        {% if model.add_url %}<a href="{{ model.add_url }}" class="pill">{% trans 'Nuevo' %}</a>{% endif %}
+                                        {% if model.admin_url %}<a href="{{ model.admin_url }}" class="pill secondary">{% trans 'Abrir' %}</a>{% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="empty">{% trans 'No hay modelos disponibles en esta aplicación.' %}</p>
+                        {% endif %}
+                    </section>
+                {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
+            {% endif %}
+        </div>
+
+        <aside class="dashboard-aside">
+            <div class="aside-card quick-actions" id="dashboard-quick">
+                <h3>{% trans 'Acciones rápidas' %}</h3>
+                <p class="aside-description">{% trans 'Iniciá nuevos registros en segundos.' %}</p>
+                {% admin_quick_actions app_list 8 as quick_actions %}
+                {% if quick_actions %}
+                    <ul class="quick-actions-list">
+                    {% for action in quick_actions %}
                         <li>
-                            {% if model.admin_url %}
-                                <a href="{{ model.admin_url }}">{{ model.name }}</a>
-                            {% else %}
-                                {{ model.name }}
-                            {% endif %}
-                            {% if model.add_url or model.admin_url %}
-                                <div class="actions">
-                                    {% if model.add_url %}<a href="{{ model.add_url }}" class="pill">{% trans 'Nuevo' %}</a>{% endif %}
-                                    {% if model.admin_url %}<a href="{{ model.admin_url }}" class="pill secondary">{% trans 'Ver' %}</a>{% endif %}
-                                </div>
-                            {% endif %}
+                            <a href="{{ action.url }}">
+                                <span class="label">{% blocktrans with model_name=action.name %}Nuevo {{ model_name }}{% endblocktrans %}</span>
+                                <span aria-hidden="true" class="icon">+</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="empty">{% trans 'No hay acciones disponibles en este momento.' %}</p>
+                {% endif %}
+            </div>
+
+            <div class="aside-card recent" id="dashboard-activity">
+                <h3>{% trans 'Actividad reciente' %}</h3>
+                <p class="aside-description">{% trans 'Seguimiento de los últimos cambios realizados en el sistema.' %}</p>
+                {% get_admin_log 10 as admin_log for_user user %}
+                {% if not admin_log %}
+                    <p class="empty">{% trans 'Aún no se registraron movimientos.' %}</p>
+                {% else %}
+                    <ul class="recent-list">
+                    {% for entry in admin_log %}
+                        <li class="recent-entry{% if entry.is_addition %} add{% elif entry.is_change %} change{% elif entry.is_deletion %} delete{% endif %}">
+                            <div class="recent-main">
+                                {% if entry.is_deletion or not entry.get_admin_url %}
+                                    <span class="recent-object">{{ entry.object_repr }}</span>
+                                {% else %}
+                                    <a class="recent-object" href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                                {% endif %}
+                                <span class="recent-meta">
+                                    {% if entry.content_type %}
+                                        {{ entry.content_type.name|capfirst }} · {{ entry.action_time|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        {% trans 'Contenido desconocido' %}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <span class="recent-badge">
+                                {% if entry.is_addition %}{% trans 'Alta' %}{% elif entry.is_change %}{% trans 'Actualización' %}{% elif entry.is_deletion %}{% trans 'Eliminación' %}{% endif %}
+                            </span>
                         </li>
                     {% endfor %}
                     </ul>
                 {% endif %}
-            </section>
-        {% endfor %}
-        </div>
-    {% else %}
-        <p class="empty">{% trans 'No hay aplicaciones disponibles.' %}</p>
-    {% endif %}
+            </div>
+        </aside>
+    </div>
 </div>
 {% endblock %}
