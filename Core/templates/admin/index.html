@@ -11,19 +11,21 @@
 {% get_admin_log 6 as hero_admin_log for_user user %}
 <div class="sf-dashboard-shell">
     <section class="sf-dashboard-hero">
-        <div class="sf-hero-text">
-            <p class="eyebrow">{% trans 'Panel principal' %}</p>
-            <h1>{% trans 'Administra con precisión en blanco y negro' %}</h1>
-            <p>{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
-            <div class="sf-hero-actions">
-                <a class="sf-cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
-                <a class="sf-cta" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
+        <div class="sf-card sf-hero-intro">
+            <div class="sf-hero-text">
+                <p class="eyebrow">{% trans 'Panel principal' %}</p>
+                <h1>{% trans 'Administra con precisión en blanco y negro' %}</h1>
+                <p class="sf-hero-summary-text">{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
+                <div class="sf-hero-actions">
+                    <a class="sf-cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
+                    <a class="sf-cta" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
+                </div>
             </div>
             <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión activa como {{ username }}{% endblocktrans %}</p>
         </div>
-        <div class="sf-hero-summary">
+        <div class="sf-card sf-hero-summary">
             <h2>{% trans 'Resumen instantáneo' %}</h2>
-            <p>{% trans 'Seguimiento rápido de los módulos que impulsan tu operación diaria.' %}</p>
+            <p class="sf-hero-summary-text">{% trans 'Seguimiento rápido de los módulos que impulsan tu operación diaria.' %}</p>
             <dl class="sf-hero-metrics">
                 <div class="sf-hero-metric">
                     <dt>{% trans 'Aplicaciones' %}</dt>
@@ -42,7 +44,7 @@
     </section>
 
     <div class="sf-dashboard-grid">
-        <section class="sf-card" id="dashboard-apps">
+        <section class="sf-card sf-apps-card" id="dashboard-apps">
             <div class="sf-section-heading">
                 <h2>{% trans 'Aplicaciones y modelos' %}</h2>
                 <p>{% trans 'Accedé a cada módulo con tarjetas claras y accesos rápidos para crear o gestionar información.' %}</p>
@@ -93,7 +95,7 @@
         </section>
 
         <aside class="sf-sidebar">
-            <section class="sf-card" id="dashboard-quick">
+            <section class="sf-card sf-quick-card" id="dashboard-quick">
                 <h3>{% trans 'Acciones inmediatas' %}</h3>
                 <p class="sf-card-description">{% trans 'Creá nuevos registros sin perder tiempo.' %}</p>
                 {% admin_quick_actions app_list 8 as quick_actions %}
@@ -101,9 +103,9 @@
                     <ul class="sf-quick-actions-list">
                     {% for action in quick_actions %}
                         <li>
-                            <a href="{{ action.url }}">
-                                <span class="label">{% blocktrans with model_name=action.name %}Nuevo {{ model_name }}{% endblocktrans %}</span>
-                                <span aria-hidden="true" class="icon">+</span>
+                            <a class="sf-quick-action" href="{{ action.url }}">
+                                <span class="sf-quick-action-label">{% blocktrans with model_name=action.name %}Nuevo {{ model_name }}{% endblocktrans %}</span>
+                                <span aria-hidden="true" class="sf-quick-action-icon">+</span>
                             </a>
                         </li>
                     {% endfor %}
@@ -113,7 +115,7 @@
                 {% endif %}
             </section>
 
-            <section class="sf-card" id="dashboard-activity">
+            <section class="sf-card sf-activity-card" id="dashboard-activity">
                 <h3>{% trans 'Actividad reciente' %}</h3>
                 <p class="sf-card-description">{% trans 'Revisá los últimos movimientos registrados en el sistema.' %}</p>
                 {% get_admin_log 10 as admin_log for_user user %}
