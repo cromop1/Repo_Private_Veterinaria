@@ -14,12 +14,12 @@
 <div class="login-shell">
     <section class="login-intro">
         <p class="eyebrow">{% trans 'Sabueso Feliz' %}</p>
-        <h1>{% trans 'Administración monocromática y elegante' %}</h1>
-        <p class="login-copy">{% trans 'Ingresá para acceder a las herramientas que mantienen tu veterinaria en equilibrio.' %}</p>
+        <h1>{% trans 'Administración monocromática' %}</h1>
+        <p class="login-copy">{% trans 'Accedé al panel minimalista en blanco y negro para mantener la operación siempre bajo control.' %}</p>
         <ul class="login-highlights">
-            <li>{% trans 'Panel minimalista con foco en tus tareas diarias.' %}</li>
-            <li>{% trans 'Seguimiento inmediato de los movimientos más recientes.' %}</li>
-            <li>{% trans 'Experiencia en blanco y negro pensada para trabajar sin distracciones.' %}</li>
+            <li>{% trans 'Interfaz centrada en datos y tareas clave.' %}</li>
+            <li>{% trans 'Seguimiento inmediato de las últimas acciones registradas.' %}</li>
+            <li>{% trans 'Estética neutra que reduce el ruido visual.' %}</li>
         </ul>
     </section>
     <div class="login-card">
@@ -38,7 +38,7 @@
         {% if user.is_authenticated %}
             <p class="errornote">
                 {% blocktranslate trimmed %}
-                Iniciaste sesión como {{ username }}, pero no tenés permisos para acceder.
+                Iniciaste sesión como {{ user.get_username }}, pero no tenés permisos para acceder.
                 ¿Querés entrar con otra cuenta?
                 {% endblocktranslate %}
             </p>

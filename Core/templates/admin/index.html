@@ -12,14 +12,14 @@
 <div class="dashboard-shell">
     <section class="dashboard-hero">
         <div class="hero-text">
-            <p class="eyebrow">{% trans 'Panel principal' %}</p>
-            <h1>{% trans 'Control total en una sola mirada' %}</h1>
-            <p class="hero-description">{% trans 'Organizá pacientes, turnos y stock desde un tablero limpio, moderno y centrado en tu flujo de trabajo.' %}</p>
+            <p class="eyebrow">{% trans 'Panel central' %}</p>
+            <h1>{% trans 'Dirección absoluta en blanco y negro' %}</h1>
+            <p class="hero-description">{% trans 'Supervisá pacientes, citas, inventario y reportes desde un entorno monocromático diseñado para enfocar tu atención en los datos.' %}</p>
             <div class="hero-actions">
-                <a class="cta primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
-                <a class="cta" href="#dashboard-activity">{% trans 'Ver actividad' %}</a>
+                <a class="cta primary" href="#dashboard-apps">{% trans 'Ir a mis aplicaciones' %}</a>
+                <a class="cta" href="#dashboard-activity">{% trans 'Últimos movimientos' %}</a>
             </div>
-            <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión iniciada como {{ username }}{% endblocktrans %}</p>
+            <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión activa como {{ username }}{% endblocktrans %}</p>
         </div>
         <div class="hero-metrics">
             <div class="metric-card">
@@ -37,7 +37,7 @@
             <div class="metric-card">
                 <span class="metric-value">{{ hero_admin_log|length }}</span>
                 <span class="metric-label">
-                    {% blocktrans count entry_count=hero_admin_log|length %}Movimiento reciente{% plural %}Movimientos recientes{% endblocktrans %}
+                    {% blocktrans count entry_count=hero_admin_log|length %}Acción reciente{% plural %}Acciones recientes{% endblocktrans %}
                 </span>
             </div>
         </div>
@@ -46,8 +46,8 @@
     <div class="dashboard-layout">
         <div class="app-section" id="dashboard-apps">
             <div class="section-heading">
-                <h2>{% trans 'Aplicaciones disponibles' %}</h2>
-                <p>{% trans 'Accedé a cada módulo y creá nuevos registros desde este panel minimalista.' %}</p>
+                <h2>{% trans 'Aplicaciones y modelos' %}</h2>
+                <p>{% trans 'Entrá directo a los módulos clave o creá registros desde este tablero minimalista.' %}</p>
             </div>
             {% if app_list %}
                 <div class="app-grid">
@@ -59,7 +59,7 @@
                                 <h3>{{ app.name }}</h3>
                             </div>
                             {% if app.app_url %}
-                                <a class="ghost-link" href="{{ app.app_url }}">{% trans 'Ver todo' %}</a>
+                                <a class="ghost-link" href="{{ app.app_url }}">{% trans 'Ver módulo' %}</a>
                             {% endif %}
                         </header>
                         {% if app.models %}
@@ -71,7 +71,7 @@
                                         {% if model.description %}<span class="model-meta">{{ model.description }}</span>{% endif %}
                                     </div>
                                     <div class="model-actions">
-                                        {% if model.add_url %}<a href="{{ model.add_url }}" class="pill">{% trans 'Nuevo' %}</a>{% endif %}
+                                        {% if model.add_url %}<a href="{{ model.add_url }}" class="pill">{% trans 'Crear' %}</a>{% endif %}
                                         {% if model.admin_url %}<a href="{{ model.admin_url }}" class="pill secondary">{% trans 'Abrir' %}</a>{% endif %}
                                     </div>
                                 </li>
@@ -90,8 +90,8 @@
 
         <aside class="dashboard-aside">
             <div class="aside-card quick-actions" id="dashboard-quick">
-                <h3>{% trans 'Acciones rápidas' %}</h3>
-                <p class="aside-description">{% trans 'Iniciá nuevos registros en segundos.' %}</p>
+                <h3>{% trans 'Acciones inmediatas' %}</h3>
+                <p class="aside-description">{% trans 'Generá nuevos registros en un clic.' %}</p>
                 {% admin_quick_actions app_list 8 as quick_actions %}
                 {% if quick_actions %}
                     <ul class="quick-actions-list">
@@ -111,7 +111,7 @@
 
             <div class="aside-card recent" id="dashboard-activity">
                 <h3>{% trans 'Actividad reciente' %}</h3>
-                <p class="aside-description">{% trans 'Seguimiento de los últimos cambios realizados en el sistema.' %}</p>
+                <p class="aside-description">{% trans 'Consultá los cambios más frescos del sistema.' %}</p>
                 {% get_admin_log 10 as admin_log for_user user %}
                 {% if not admin_log %}
                     <p class="empty">{% trans 'Aún no se registraron movimientos.' %}</p>

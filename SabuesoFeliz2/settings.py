@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,17 +43,17 @@ INSTALLED_APPS = [
 
 
 # django-jazzmin is an optional dependency that provides an enhanced admin UI.
-# The production deployment includes it, but local environments (such as the
-# user's Windows setup from the bug report) might not have the package
-# installed. Trying to import the module allows manage.py commands like
-# ``migrate`` to run even without installing the optional extra instead of
-# crashing with ModuleNotFoundError.
-try:  # pragma: no cover - best effort guard for optional dependency
-    __import__('jazzmin')
-except ModuleNotFoundError:
-    pass
-else:
-    INSTALLED_APPS.insert(0, 'jazzmin')
+# It stays disabled by default so the refined monochrome templates remain active,
+# but deployments that still prefer Jazzmin can enable it by setting
+# ``ENABLE_JAZZMIN=1`` in the environment.
+
+if os.getenv("ENABLE_JAZZMIN", "").lower() in {"1", "true", "yes"}:
+    try:  # pragma: no cover - optional dependency hook
+        __import__('jazzmin')
+    except ModuleNotFoundError:
+        pass
+    else:
+        INSTALLED_APPS.insert(0, 'jazzmin')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -69,7 +70,7 @@ ROOT_URLCONF = 'SabuesoFeliz2.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'Core' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
