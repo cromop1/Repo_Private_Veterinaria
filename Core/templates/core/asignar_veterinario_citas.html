@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+{% block title %}Asignar Veterinario{% endblock %}
+
+{% block content %}
+<div class="container mt-5 max-w-6xl">
+    <h2 class="mb-4 fw-bold text-dark">Citas Pendientes</h2>
+
+    {% if citas_pendientes %}
+        <div class="list-group">
+            {% for cita in citas_pendientes %}
+            <div class="list-group-item mb-3 shadow-sm rounded-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                    <div class="flex-grow-1">
+                        <h5 class="fw-semibold mb-1">{{ cita.paciente.nombre }} ({{ cita.paciente.especie }})</h5>
+                        <p class="mb-1">Propietario: {{ cita.paciente.propietario.user.get_full_name }}</p>
+                        <p class="mb-1"><span class="badge text-bg-primary">{{ cita.sucursal.nombre }}</span></p>
+                        <p class="mb-1">Día solicitado: {{ cita.fecha_solicitada|date:"d/m/Y" }}</p>
+                        <p class="mb-1">Horario confirmado: {% if cita.fecha_hora %}{{ cita.fecha_hora|date:"H:i" }} hs{% else %}<span class="badge text-bg-warning">Sin confirmar</span>{% endif %}</p>
+                        <p class="mb-1">Notas: {{ cita.notas|default:"-" }}</p>
+                        {% with telefono=cita.telefono_contacto %}
+                            {% if telefono %}
+                                <a href="https://wa.me/{{ telefono }}?text={{ cita.mensaje_whatsapp|urlencode }}" target="_blank" class="btn btn-outline-success btn-sm mt-2">WhatsApp</a>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    <form method="POST" class="d-flex flex-column flex-md-row gap-2 align-items-md-center">
+                        {% csrf_token %}
+                        <input type="hidden" name="cita" value="{{ cita.id }}">
+                        <div class="d-flex flex-column flex-md-row gap-2">
+                            <input type="date" name="fecha" class="form-control" value="{{ cita.fecha_hora|date:'Y-m-d'|default:cita.fecha_solicitada|date:'Y-m-d' }}" required>
+                            <input type="time" name="hora" class="form-control" value="{{ cita.fecha_hora|date:'H:i' }}" required>
+                            <select name="veterinario" class="form-select" {% if not cita.veterinarios_disponibles %}disabled{% else %}required{% endif %}>
+                                {% if cita.veterinarios_disponibles %}
+                                    <option value="" disabled selected>Seleccionar Veterinario</option>
+                                    {% for vet in cita.veterinarios_disponibles %}
+                                        <option value="{{ vet.id }}">{{ vet.get_full_name|default:vet.username }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" selected>Sin profesionales disponibles en esta sucursal</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success fw-bold mt-2 mt-md-0" {% if not cita.veterinarios_disponibles %}disabled{% endif %}>Asignar</button>
+                    </form>
+                    {% if not cita.veterinarios_disponibles %}
+                        <p class="text-danger small mt-2 mb-0">
+                            No hay veterinarios activos asociados a {{ cita.sucursal.nombre }}. Actualiza la asignación de profesionales en el panel de administración para continuar.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            No hay citas pendientes para asignar.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

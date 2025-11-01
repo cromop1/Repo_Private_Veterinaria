@@ -1,0 +1,67 @@
+{% extends "core/base.html" %}
+
+{% block title %}Agendar Cita{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Agendar cita</h2>
+    <form method="post">{% csrf_token %}
+        <div class="mb-3">
+            <label>Mascota:</label>
+            <select name="paciente" class="form-select" required>
+                {% for m in mascotas %}
+                    <option value="{{ m.id }}" {% if paciente_seleccionado and paciente_seleccionado.id == m.id %}selected{% endif %}>
+                        {{ m.nombre }} ({{ m.especie }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if es_superadmin %}
+            <div class="mb-3">
+                <label>Sucursal:</label>
+                <select name="sucursal" class="form-select" required>
+                    <option value="" disabled {% if not sucursal_seleccionada %}selected{% endif %}>Seleccioná una sucursal</option>
+                    {% for sucursal in sucursales %}
+                        <option value="{{ sucursal.id }}" {% if sucursal_seleccionada and sucursal_seleccionada.id == sucursal.id %}selected{% endif %}>
+                            {{ sucursal.nombre }} · {{ sucursal.direccion }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% else %}
+            {% if sucursal_seleccionada %}
+                <input type="hidden" name="sucursal" value="{{ sucursal_seleccionada.id }}">
+                <p class="mb-3"><span class="badge text-bg-primary">Sucursal: {{ sucursal_seleccionada.nombre }}</span></p>
+            {% endif %}
+        {% endif %}
+
+        <div class="mb-3">
+            <label>Veterinario:</label>
+            <select name="veterinario" class="form-select" required>
+                {% for v in veterinarios %}
+                    <option value="{{ v.id }}">
+                        {{ v.get_full_name|default:v.username }}
+                        {% if es_superadmin %}
+                            · {{ v.sucursal.nombre }}
+                        {% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Fecha y hora:</label>
+            <input type="datetime-local" name="fecha_hora" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Notas:</label>
+            <textarea name="notas" class="form-control"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success">Agendar cita</button>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
