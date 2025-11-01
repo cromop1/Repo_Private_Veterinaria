@@ -12,9 +12,9 @@
 <div class="dashboard-shell">
     <section class="dashboard-hero">
         <div class="hero-text">
-            <p class="eyebrow">{% trans 'Panel central' %}</p>
-            <h1>{% trans 'Dirección absoluta en blanco y negro' %}</h1>
-            <p class="hero-description">{% trans 'Supervisá pacientes, citas, inventario y reportes desde un entorno monocromático diseñado para enfocar tu atención en los datos.' %}</p>
+            <p class="eyebrow">{% trans 'Panel principal' %}</p>
+            <h1>{% trans 'Administración precisa en blanco y negro' %}</h1>
+            <p class="hero-description">{% trans 'Supervisá pacientes, citas, inventario y reportes en una interfaz sobria que prioriza lo esencial y mantiene todo en perfecto equilibrio.' %}</p>
             <div class="hero-actions">
                 <a class="cta primary" href="#dashboard-apps">{% trans 'Ir a mis aplicaciones' %}</a>
                 <a class="cta" href="#dashboard-activity">{% trans 'Últimos movimientos' %}</a>
@@ -47,7 +47,7 @@
         <div class="app-section" id="dashboard-apps">
             <div class="section-heading">
                 <h2>{% trans 'Aplicaciones y modelos' %}</h2>
-                <p>{% trans 'Entrá directo a los módulos clave o creá registros desde este tablero minimalista.' %}</p>
+                <p>{% trans 'Ingresá directo a los módulos clave o creá registros con un tablero minimalista y balanceado.' %}</p>
             </div>
             {% if app_list %}
                 <div class="app-grid">
@@ -91,7 +91,7 @@
         <aside class="dashboard-aside">
             <div class="aside-card quick-actions" id="dashboard-quick">
                 <h3>{% trans 'Acciones inmediatas' %}</h3>
-                <p class="aside-description">{% trans 'Generá nuevos registros en un clic.' %}</p>
+                <p class="aside-description">{% trans 'Creá nuevos registros en segundos.' %}</p>
                 {% admin_quick_actions app_list 8 as quick_actions %}
                 {% if quick_actions %}
                     <ul class="quick-actions-list">
@@ -111,7 +111,7 @@
 
             <div class="aside-card recent" id="dashboard-activity">
                 <h3>{% trans 'Actividad reciente' %}</h3>
-                <p class="aside-description">{% trans 'Consultá los cambios más frescos del sistema.' %}</p>
+                <p class="aside-description">{% trans 'Consultá los últimos movimientos registrados.' %}</p>
                 {% get_admin_log 10 as admin_log for_user user %}
                 {% if not admin_log %}
                     <p class="empty">{% trans 'Aún no se registraron movimientos.' %}</p>
