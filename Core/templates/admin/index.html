@@ -11,8 +11,8 @@
 {% get_admin_log 6 as hero_admin_log for_user user %}
 <div class="dashboard-shell">
     <section class="dashboard-hero">
-        <div class="hero-text">
-            <p class="eyebrow">{% trans 'Panel principal' %}</p>
+        <div class="hero-copy">
+            <p class="hero-badge">{% trans 'Panel principal' %}</p>
             <h1>{% trans 'Administración precisa en blanco y negro' %}</h1>
             <p class="hero-description">{% trans 'Supervisá pacientes, citas, inventario y reportes en una interfaz sobria que prioriza lo esencial y mantiene todo en perfecto equilibrio.' %}</p>
             <div class="hero-actions">
@@ -21,24 +21,35 @@
             </div>
             <p class="hero-session">{% blocktrans with username=user.get_short_name|default:user.get_username %}Sesión activa como {{ username }}{% endblocktrans %}</p>
         </div>
-        <div class="hero-metrics">
-            <div class="metric-card">
-                <span class="metric-value">{{ app_list|length }}</span>
-                <span class="metric-label">
-                    {% blocktrans count app_count=app_list|length %}Aplicación registrada{% plural %}Aplicaciones registradas{% endblocktrans %}
-                </span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-value">{{ model_count }}</span>
-                <span class="metric-label">
-                    {% blocktrans count model_count=model_count %}Modelo gestionable{% plural %}Modelos gestionables{% endblocktrans %}
-                </span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-value">{{ hero_admin_log|length }}</span>
-                <span class="metric-label">
-                    {% blocktrans count entry_count=hero_admin_log|length %}Acción reciente{% plural %}Acciones recientes{% endblocktrans %}
-                </span>
+        <div class="hero-overview">
+            <article class="hero-card">
+                <h2>{% trans 'Resumen al instante' %}</h2>
+                <p>{% trans 'Monitoreá tus módulos clave con métricas concisas y un acceso directo a lo más importante.' %}</p>
+                <ul class="hero-highlights">
+                    <li><span class="highlight-value">{{ app_list|length }}</span> {% trans 'aplicaciones activas' %}</li>
+                    <li><span class="highlight-value">{{ model_count }}</span> {% trans 'modelos listos para administrar' %}</li>
+                    <li><span class="highlight-value">{{ hero_admin_log|length }}</span> {% trans 'acciones registradas recientemente' %}</li>
+                </ul>
+            </article>
+            <div class="hero-stats">
+                <article class="metric-card">
+                    <span class="metric-value">{{ app_list|length }}</span>
+                    <span class="metric-label">
+                        {% blocktrans count app_count=app_list|length %}Aplicación registrada{% plural %}Aplicaciones registradas{% endblocktrans %}
+                    </span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-value">{{ model_count }}</span>
+                    <span class="metric-label">
+                        {% blocktrans count model_count=model_count %}Modelo gestionable{% plural %}Modelos gestionables{% endblocktrans %}
+                    </span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-value">{{ hero_admin_log|length }}</span>
+                    <span class="metric-label">
+                        {% blocktrans count entry_count=hero_admin_log|length %}Acción reciente{% plural %}Acciones recientes{% endblocktrans %}
+                    </span>
+                </article>
             </div>
         </div>
     </section>
