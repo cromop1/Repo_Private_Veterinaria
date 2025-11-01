@@ -11,44 +11,39 @@
 {% get_admin_log 6 as hero_admin_log for_user user %}
 <div class="sf-dashboard">
     <div class="sf-dashboard__inner">
-        <header class="sf-panel sf-hero" aria-labelledby="admin-hero-title">
-            <div class="sf-hero__text">
+        <section class="sf-panel sf-hero" aria-labelledby="admin-hero-title">
+            <div class="sf-hero__intro">
                 <p class="sf-kicker">{% trans 'Panel principal' %}</p>
-                <h1 id="admin-hero-title" class="sf-hero__title">{% trans 'Administra con precisión en blanco y negro' %}</h1>
-                <p>{% trans 'Controlá pacientes, citas, inventario y reportes con una interfaz balanceada que prioriza claridad, enfoque y velocidad.' %}</p>
+                <h1 id="admin-hero-title" class="sf-hero__title">{% trans 'Gestioná Sabueso Feliz con confianza' %}</h1>
+                <p>{% trans 'Controlá pacientes, citas, inventario y reportes desde un panel equilibrado que prioriza claridad y agilidad.' %}</p>
                 <div class="sf-hero__actions">
                     <a class="sf-button primary" href="#dashboard-apps">{% trans 'Explorar aplicaciones' %}</a>
                     <a class="sf-button secondary" href="#dashboard-activity">{% trans 'Ver actividad reciente' %}</a>
                 </div>
             </div>
-            <div class="sf-hero__meta">
-                <span class="sf-hero__meta-label">{% trans 'Sesión activa' %}</span>
-                <span class="sf-hero__meta-user">{% blocktrans with username=user.get_short_name|default:user.get_username %}Conectado como {{ username }}{% endblocktrans %}</span>
-            </div>
-        </header>
-
-        <section class="sf-section sf-stats" aria-labelledby="dashboard-stats-title">
-            <div class="sf-section__heading">
-                <h2 id="dashboard-stats-title">{% trans 'Resumen instantáneo' %}</h2>
-                <p>{% trans 'Seguimiento rápido de los módulos que impulsan tu operación diaria.' %}</p>
-            </div>
-            <div class="sf-stats__grid" role="list">
-                <article class="sf-stat-card" role="listitem">
-                    <span class="label">{% trans 'Aplicaciones' %}</span>
-                    <span class="value">{{ app_list|length }}</span>
-                </article>
-                <article class="sf-stat-card" role="listitem">
-                    <span class="label">{% trans 'Modelos gestionables' %}</span>
-                    <span class="value">{{ model_count }}</span>
-                </article>
-                <article class="sf-stat-card" role="listitem">
-                    <span class="label">{% trans 'Acciones registradas' %}</span>
-                    <span class="value">{{ hero_admin_log|length }}</span>
-                </article>
+            <div class="sf-hero__snapshot">
+                <div>
+                    <span class="sf-hero__meta-label">{% trans 'Sesión activa' %}</span>
+                    <span class="sf-hero__meta-user">{% blocktrans with username=user.get_short_name|default:user.get_username %}Conectado como {{ username }}{% endblocktrans %}</span>
+                </div>
+                <div class="sf-hero__stats" role="list">
+                    <article class="sf-stat-card" role="listitem">
+                        <span class="label">{% trans 'Aplicaciones' %}</span>
+                        <span class="value">{{ app_list|length }}</span>
+                    </article>
+                    <article class="sf-stat-card" role="listitem">
+                        <span class="label">{% trans 'Modelos gestionables' %}</span>
+                        <span class="value">{{ model_count }}</span>
+                    </article>
+                    <article class="sf-stat-card" role="listitem">
+                        <span class="label">{% trans 'Acciones registradas' %}</span>
+                        <span class="value">{{ hero_admin_log|length }}</span>
+                    </article>
+                </div>
             </div>
         </section>
 
-        <div class="sf-layout">
+        <div class="sf-main-grid">
             <section class="sf-section sf-apps" id="dashboard-apps" aria-labelledby="dashboard-apps-title">
                 <div class="sf-section__heading">
                     <h2 id="dashboard-apps-title">{% trans 'Aplicaciones y modelos' %}</h2>
