@@ -31,7 +31,6 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +39,20 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Core',
 ]
+
+
+# django-jazzmin is an optional dependency that provides an enhanced admin UI.
+# The production deployment includes it, but local environments (such as the
+# user's Windows setup from the bug report) might not have the package
+# installed. Trying to import the module allows manage.py commands like
+# ``migrate`` to run even without installing the optional extra instead of
+# crashing with ModuleNotFoundError.
+try:  # pragma: no cover - best effort guard for optional dependency
+    __import__('jazzmin')
+except ModuleNotFoundError:
+    pass
+else:
+    INSTALLED_APPS.insert(0, 'jazzmin')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
